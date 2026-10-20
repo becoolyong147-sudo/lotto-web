@@ -1,0 +1,338 @@
+# -*- coding: utf-8 -*-
+"""
+auto_fetch_results.py — 自动抓取九市场 4D 开奖成绩 → auto_results.json
+
+数据源: rins.my (2026-07-27 起, 与用户 Excel 同源; 旧源 live4d2u 已弃用)
+  - huat5?t=<代号>  : 每市场最近3期, 含 特别奖13 + 安慰奖10 (---- = 空位自动跳过)
+  - huat3?t=<代号>&fromyear=YYYY : 该市场从某年至今全历史(仅头二三奖), 用于补漏
+九市场: 万能M 跑马PMP 多多ST 新加坡SG 豪龙GD 沙巴EE 9龙NL 砂拉越CS 山打根STC
+  (豪龙/9龙 天天开, 其余每周约3次)
+输出: auto_results.json {updated_at, source, draws:[{market,date,draw,nums,sp,cs}]}
+用法: python auto_fetch_results.py                 # 抓最新 + 补漏最近7天
+      python auto_fetch_results.py --backfill 30   # 补漏最近30天
+      python auto_fetch_results.py --sp-only       # 只补「最新一期缺特别奖」的市场, 自动重试
+                 --retries N (默认5) --retry-wait S (默认300秒)
+                 # 数据源常先放头二三、稍后才放特别奖(下一期主打靠特别奖算); 本模式反复补 sp/cs
+                 # 直到补齐。退出码: 0=已补齐, 2=仍有市场缺(待下轮), 1=致命错误
+lottery.html 打开时会自动读取 auto_results.json 并合并(只增不覆盖)。
+"""
+import requests, re, json, sys, time, os, io
+from datetime import date, datetime, timedelta
+
+def _force_utf8_stdout():
+    if hasattr(sys.stdout, "buffer"):
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+OUT_FILE = os.path.join(BASE_DIR, "auto_results.json")
+LOG_FILE = os.path.join(BASE_DIR, "auto_fetch.log")
+
+UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"}
+HUAT5 = "https://rins.my/huat5"   # 最近3期 + sp/cs
+HUAT3 = "https://rins.my/huat3"   # 全历史, 仅头二三
+
+# 市场 → rins 代号 (顺序即抓取顺序)
+MARKETS = [
+    ("万能", "M"), ("跑马", "PMP"), ("多多", "ST"), ("新加坡", "SG"),
+    ("豪龙", "GD"), ("沙巴", "EE"), ("9龙", "NL"), ("砂拉越", "CS"),
+]
+
+def log(msg):
+    line = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}"
+    print(line)
+    try:
+        if os.path.exists(LOG_FILE) and os.path.getsize(LOG_FILE) > 200_000:
+            with open(LOG_FILE, encoding="utf-8", errors="replace") as f:
+                tail = f.read()[-100_000:]
+            with open(LOG_FILE, "w", encoding="utf-8") as f:
+                f.write(tail)
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    except OSError:
+        pass
+
+def fetch_huat5(sess, market, code):
+    """最近3期(含 sp/cs) → [{market,date,draw,nums,sp,cs}]"""
+    r = sess.get(HUAT5, params={"t": code, "d": "", "p": "", "fromyear": date.today().year, "month": 0}, timeout=30)
+    r.raise_for_status()
+    html = r.content.decode("utf-8", "replace")
+    out = []
+    # 每期一块: header(date, weekday, draw) + results 表
+    blocks = re.split(r'<div class="header">', html)[1:]
+    for blk in blocks:
+        hm = re.search(r"<span>(\d{4}-\d{2}-\d{2})</span>\s*<span>[^<]*</span>\s*<span>([^<]*)</span>", blk)
+        if not hm:
+            continue
+        d, draw = hm.group(1), hm.group(2).strip()
+        tbl = re.search(r'<table class="results">(.*?)</table>', blk, re.S)
+        if not tbl:
+            continue
+        # 结构(固定): 第1行=头二三 | 特别奖(2行) | 安慰奖(2行), ---- = 未放/空位
+        def cellnums(row):
+            return [c.strip() for c in re.findall(r"<td[^>]*>([^<]*)</td>", row)
+                    if re.fullmatch(r"\d{4}", c.strip())]
+        rows = re.findall(r"<tr>(.*?)</tr>", tbl.group(1), re.S)
+        if not rows:
+            continue
+        head = cellnums(rows[0])
+        # ⚠️ 头二三必须在第1行放全(≥3个)才抓; 没放全(----)就跳过, 等下次补(否则会误抓安慰奖当头三)
+        if len(head) < 3:
+            continue
+        nums = head[:3]
+        # 头三之后的行按空行/---- 分组: 第1组=特别, 第2组=安慰
+        groups, cur = [], []
+        for row in rows[1:]:
+            ns = cellnums(row)
+            if ns:
+                cur.extend(ns)
+            elif cur:
+                groups.append(cur); cur = []
+        if cur:
+            groups.append(cur)
+        entry = {"market": market, "date": d, "draw": draw, "nums": nums}
+        # 注: 头三取自第1行, 小奖取自其后的行, 结构上不会混入; 不要再「剔头二三」——
+        #     新加坡规则允许同一个号既是二奖又在安慰奖(如 2026-10-03 的 0529), 剔掉会少号
+        if len(groups) > 0 and groups[0]:
+            sp = groups[0][:13]
+            if sp: entry["sp"] = sp
+        if len(groups) > 1 and groups[1]:
+            cs = groups[1][:13]
+            if cs: entry["cs"] = cs
+        out.append(entry)
+    return out
+
+def fetch_huat3_range(sess, market, code, fromdate):
+    """fromdate(含)之后的所有开奖(仅头二三) → [{market,date,draw,nums}]"""
+    r = sess.get(HUAT3, params={"t": code, "d": "", "p": "", "fromyear": fromdate.year, "month": 0}, timeout=60)
+    r.raise_for_status()
+    html = r.content.decode("utf-8", "replace")
+    rows = re.findall(
+        r'<tr data-type="' + code + r'">\s*<td>(\d{4}-\d{2}-\d{2})</td>\s*<td>([^<]*)</td>'
+        r'\s*<td[^>]*>(\d{4})[^<]*</td>\s*<td[^>]*>(\d{4})[^<]*</td>\s*<td[^>]*>(\d{4})[^<]*</td>', html)
+    lo = fromdate.strftime("%Y-%m-%d")
+    return [{"market": market, "date": d, "draw": draw.strip(), "nums": [n1, n2, n3]}
+            for d, draw, n1, n2, n3 in rows if d >= lo]
+
+def load_existing():
+    try:
+        with open(OUT_FILE, encoding="utf-8") as f:
+            return [x for x in json.load(f).get("draws", []) if x.get("market") != "山打根"]   # 山打根已停用
+    except (OSError, ValueError):
+        return []
+
+def fill_huat5(sess, by_key, markets):
+    """对 markets 跑一遍 huat5: 新增缺失期 + 只补已有条目缺失的 sp/cs(不动 nums)。
+    返回 (added, spcs_filled)。markets 为 [(市场名, rins代号), ...]。"""
+    added, spcs_filled, fixed = 0, 0, 0
+    for market, code in markets:
+        try:
+            for x in fetch_huat5(sess, market, code):
+                k = (x["market"], x["date"])
+                if k not in by_key:
+                    by_key[k] = x; added += 1
+                else:
+                    old = by_key[k]
+                    # 自纠错: 源站补全后, 若已存 nums 与新抓的不一致(之前源站未放全抓错), 用新的覆盖
+                    if x.get("nums") and old.get("nums") and list(x["nums"]) != list(old["nums"]):
+                        log(f"纠正 {market} {x['date']} nums {old['nums']} -> {x['nums']}")
+                        old["nums"] = x["nums"]
+                        if "sp" in x: old["sp"] = x["sp"]
+                        if "cs" in x: old["cs"] = x["cs"]
+                        fixed += 1
+                        continue
+                    for f in ("sp", "cs"):
+                        if f in x and not old.get(f):
+                            old[f] = x[f]; spcs_filled += 1
+            time.sleep(1.5)
+        except Exception as e:
+            log(f"huat5 {market} 失败: {type(e).__name__}: {e}")
+    return added, spcs_filled, fixed
+
+def fill_4d2ulive(by_key, days=3):
+    """备用来源 4d2ulive.com: rins.my 挡程序(返回「One moment, please」)时用。
+    抓首页 + 最近 days 天的 past-results 页, 新增缺失期 + 补缺的 sp/cs(不改已有 nums)。"""
+    import fetch_small_prizes as F, fetch_small_prizes_dragon as G
+    added, filled = 0, 0
+    pages = [("https://4d2ulive.com/", None), ("https://4d2ulive.com/nine-lotto", None), ("https://4d2ulive.com/grand-dragon-4d-all", None)] + [
+        (F.URL.format(d=(date.today() - timedelta(days=k)).isoformat()), (date.today() - timedelta(days=k)).isoformat())
+        for k in range(days)]
+    want = {m for m, _ in MARKETS}
+    for url, d in pages:
+        try:
+            r = requests.get(url, headers=UA, timeout=40)
+            h = r.content.decode("utf-8", "replace")
+        except Exception as e:
+            log(f"4d2ulive {url} 失败: {type(e).__name__}: {e}"); continue
+        dates = [d] if d else sorted(set("%s-%s-%s" % (c, b, a) for a, b, c in re.findall(r"Date:\s*(\d{2})-(\d{2})-(\d{4})", F.to_text(h))))
+        rows = []
+        for dd in dates:
+            rows += F.parse_page(h, dd)
+        t = F.to_text(h)
+        for m in G.PAT.finditer(t):      # 豪龙 / 9龙
+            mk = "豪龙" if m.group(1) == "Grand Dragon 4D" else "9龙"
+            rows.append({"market": mk, "date": "%s-%s-%s" % (m.group(4), m.group(3), m.group(2)), "draw": m.group(5) or "",
+                         "nums": [m.group(6), m.group(7), m.group(8)],
+                         "sp": re.findall(r"(?<!\d)(\d{4})(?!\d)", m.group(9))[:10],
+                         "cs": re.findall(r"(?<!\d)(\d{4})(?!\d)", m.group(10))[:10]})
+        for x in rows:
+            if x["market"] not in want or len(x.get("nums") or []) < 3:
+                continue
+            x = {k: v for k, v in x.items() if v or k in ("market", "date", "nums")}
+            k = (x["market"], x["date"])
+            if k not in by_key:
+                by_key[k] = x; added += 1
+            else:
+                old = by_key[k]
+                for f in ("sp", "cs"):
+                    if x.get(f) and not old.get(f):
+                        old[f] = x[f]; filled += 1
+        time.sleep(1.5)
+    return added, filled
+
+def markets_missing_sp(by_key):
+    """找出「最新一期还缺特别奖」的市场 → [(市场名, rins代号), ...]。
+    只看每个市场日期最大的那期(下一期主打就靠它算)；缺 sp 即视为待补。"""
+    latest_date = {}
+    for (m, d) in by_key:
+        if m not in latest_date or d > latest_date[m]:
+            latest_date[m] = d
+    pending = []
+    for market, code in MARKETS:
+        d = latest_date.get(market)
+        if d and not by_key.get((market, d), {}).get("sp"):
+            pending.append((market, code))
+    return pending
+
+def write_out(by_key, added, spcs_filled):
+    # 合并写出: 按市场保留最近 120 期, 日期新→旧
+    by_market = {}
+    for x in by_key.values():
+        by_market.setdefault(x["market"], []).append(x)
+    final = []
+    for mk, arr in by_market.items():
+        arr.sort(key=lambda x: x["date"], reverse=True)
+        final.extend(arr[:120])
+    final.sort(key=lambda x: (x["date"], x["market"]), reverse=True)
+
+    tmp = OUT_FILE + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump({"updated_at": datetime.now().isoformat(timespec="seconds"),
+                   "source": "rins.my", "draws": final}, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, OUT_FILE)
+    log(f"写出 {OUT_FILE}: 共 {len(final)} 条 (新增 {added}, 补sp/cs {spcs_filled})")
+
+def sp_only(retries, retry_wait):
+    """只补特别奖模式: 反复只对「最新一期缺 sp」的市场跑 huat5, 直到补齐或用尽重试。
+    数据源常常先放头二三、稍后才放特别奖; 本模式让本地定时任务能自动多轮补齐。
+    退出码: 0=全部补齐(或本就无缺), 2=仍有市场缺特别奖(待下轮再补), 1=致命错误。"""
+    sess = requests.Session()
+    sess.headers.update(UA)
+
+    existing = load_existing()
+    if not existing:
+        log("sp-only: auto_results.json 为空, 请先跑一次完整抓取")
+        sys.exit(2)
+    by_key = {(x["market"], x["date"]): x for x in existing}
+
+    pending = markets_missing_sp(by_key)
+    if not pending:
+        log("sp-only: 所有市场最新一期都已有特别奖, 无需补")
+        sys.exit(0)
+    log(f"sp-only: 待补特别奖的市场({len(pending)}): {', '.join(m for m, _ in pending)}")
+
+    total_filled = 0
+    for attempt in range(1, retries + 2):  # 首轮 + retries 次重试
+        _, filled = fill_huat5(sess, by_key, pending)
+        total_filled += filled
+        pending = markets_missing_sp(by_key)
+        log(f"sp-only: 第 {attempt} 轮 补 {filled} 处, 仍缺 {len(pending)} 个市场"
+            + (": " + ", ".join(m for m, _ in pending) if pending else ""))
+        if not pending:
+            break
+        if attempt <= retries:
+            log(f"sp-only: 等 {retry_wait}s 后重试…")
+            time.sleep(retry_wait)
+
+    if total_filled:
+        write_out(by_key, 0, total_filled)
+    else:
+        log("sp-only: 本轮未补到任何特别奖, 文件保持不变")
+
+    if pending:
+        log(f"sp-only: 用尽重试后仍缺 {len(pending)} 个市场(数据源可能还没放特别奖), 退出码 2")
+        sys.exit(2)
+    log("sp-only: 特别奖已全部补齐, 退出码 0")
+    sys.exit(0)
+
+def main():
+    # 只补特别奖 + 自动重试模式(不新增日期/不补头二三, 供本地定时任务多轮补齐用)
+    if "--sp-only" in sys.argv:
+        retries, retry_wait = 5, 300
+        if "--retries" in sys.argv:
+            i = sys.argv.index("--retries")
+            if i + 1 < len(sys.argv):
+                retries = max(0, min(50, int(sys.argv[i + 1])))
+        if "--retry-wait" in sys.argv:
+            i = sys.argv.index("--retry-wait")
+            if i + 1 < len(sys.argv):
+                retry_wait = max(5, min(3600, int(sys.argv[i + 1])))
+        sp_only(retries, retry_wait)
+        return
+
+    backfill_days = 7
+    if "--backfill" in sys.argv:
+        i = sys.argv.index("--backfill")
+        if i + 1 < len(sys.argv):
+            backfill_days = max(0, min(365, int(sys.argv[i + 1])))
+
+    sess = requests.Session()
+    sess.headers.update(UA)
+
+    existing = load_existing()
+    by_key = {(x["market"], x["date"]): x for x in existing}
+    added, spcs_filled, fixed = 0, 0, 0
+
+    # 1) huat5: 每市场最近3期(含 sp/cs); 新增缺失期 + 补 sp/cs + 源站补全后自纠错 nums
+    a, f, fx = fill_huat5(sess, by_key, MARKETS)
+    added += a; spcs_filled += f; fixed += fx
+    log(f"huat5 最新抓取 OK: 新增 {added} 条, 补 sp/cs {spcs_filled} 处, 纠正 {fixed} 处")
+
+    # 1b) 备用来源 4d2ulive(rins.my 被挡或还没放时也能更新)
+    try:
+        a, f = fill_4d2ulive(by_key)
+        added += a; spcs_filled += f
+        log(f"4d2ulive 备用来源 OK: 新增 {a} 条, 补 sp/cs {f} 处")
+    except Exception as e:
+        log(f"4d2ulive 备用来源失败: {type(e).__name__}: {e}")
+
+    # 2) huat3 补漏: 一次拉整段历史, 补最近 N 天缺的日期(仅头二三)
+    if backfill_days > 0:
+        cutoff = date.today() - timedelta(days=backfill_days)
+        bf = 0
+        for market, code in MARKETS:
+            have = {d for (m, d) in by_key if m == market}
+            try:
+                rows = fetch_huat3_range(sess, market, code, cutoff)
+                for x in rows:
+                    if x["date"] not in have:
+                        by_key[(market, x["date"])] = x; bf += 1
+                time.sleep(1.5)
+            except Exception as e:
+                log(f"huat3 补漏 {market} 失败: {type(e).__name__}: {e}")
+        log(f"huat3 补漏({backfill_days}天) OK: 补回 {bf} 条")
+        added += bf
+
+    if not added and not spcs_filled and not fixed and existing:
+        log("无新数据, 文件保持不变")
+        return
+
+    # 3) 合并写出
+    write_out(by_key, added, spcs_filled)
+
+if __name__ == "__main__":
+    _force_utf8_stdout()
+    try:
+        main()
+    except Exception as e:
+        log(f"致命错误: {type(e).__name__}: {e}")
+        sys.exit(1)
