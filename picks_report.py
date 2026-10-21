@@ -78,12 +78,26 @@ function fb(s){var a=document.createElement('textarea');a.value=s;document.body.
 _NB = [0]
 
 
-def numblock(nums):
+RECENT_N = 30                           # 最近 N 期(头二三)开过的号码不要(用户要求)
+
+
+def recent_set(draws, n=RECENT_N):
+    return {x for d in draws[-n:] for x in d["nums"]}
+
+
+def numblock(nums, excl=None):
+    gone = [n for n in nums if excl and n in excl]
+    nums = [n for n in nums if not (excl and n in excl)]
+    note = (f"<div class='m'>已去掉最近 {RECENT_N} 期开过的 {len(gone)} 个:{' '.join(gone)}</div>" if gone else "")
+    return note + _numgrid(nums)
+
+
+def _numgrid(nums):
     _NB[0] += 1
     i = "nb%d" % _NB[0]
     if not nums:
         return "<div class='m'>(没有号码)</div>"
-    return (f"<div><button class='cb' onclick=\"cpN(this,'{i}','l')\">📋 复制(一行一个)</button>"
+    return (f"<div><b>{len(nums)} 个号码</b> <button class='cb' onclick=\"cpN(this,'{i}','l')\">📋 复制(一行一个)</button>"
             f"<button class='cb' onclick=\"cpN(this,'{i}','c')\">📋 复制(逗号)</button>"
             f"<button class='cb' onclick=\"cpN(this,'{i}','s')\">📋 复制(**)</button></div>"
             f"<div class='ng' id='{i}' data-n='{' '.join(nums)}'>" + "".join(f"<span>{n}</span>" for n in nums) + "</div>")
@@ -207,11 +221,13 @@ def trend_ok_labels(draws):
     return hot, cold
 
 
-def favourites(recs, draws, k=12):
+def favourites(recs, draws, k=12, skip=None):
     hot, cold = trend_ok_labels(draws)
     best = []
     for q in range(10000):
         n = "%04d" % q
+        if skip and n in skip:
+            continue
         per = [score(n, r) for r in recs if r is not None]
         nm = sum(1 for s, r in zip(per, [r for r in recs if r is not None]) if s >= need(r))
         if nm == 0:
@@ -231,7 +247,7 @@ def fav_backtest(draws, k=12):
         recs = [recs_at(draws, i, key) for key, _ in METHODS]
         if all(r is None for r in recs):
             continue
-        fav, _, _ = favourites(recs, draws[:i + 1], k)
+        fav, _, _ = favourites(recs, draws[:i + 1], k, skip=recent_set(draws[:i + 1]))
         fs = {x[3] for x in fav}
         nxt = draws[i + 1]["nums"]
         got = [x for x in nxt if x in fs]
@@ -274,12 +290,12 @@ def main():
             rows = "".join(f"<div class='n'>{r['date'][5:]} 开 {' / '.join(('<span class=g>'+x+'</span>') if x in r['got'] else x for x in r['nums'])} {'✅' if r['got'] else '❌'}</div>"
                            for r in bt["rows"][-10:][::-1])
             html.append(f"<div class='c'><b>{name}</b>{segs}"
-                        f"<div style='margin-top:6px'><b>我的号码 {len(mine)} 个</b>:</div>{numblock(mine)}"
+                        f"<div style='margin-top:6px'><b>我的号码</b>:</div>{numblock(mine, recent_set(draws))}"
                         f"<div style='margin-top:8px'><b>回测</b>:最近 {bt['n']} 期,平均每期 {bt['avg']:.0f} 个号码,"
                         f"中头二三 <b>{bt['hit']}</b> 期;随便买同样个数,平均会中 <b>{bt['exp']:.1f}</b> 期。</div>"
                         f"<div class='m'>最近 10 期(新的在上,中的标绿):</div>{rows}</div>")
             bl.append(f"  {name}: {len(mine)} 个号码 | 回测 {bt['n']} 期中 {bt['hit']} 期, 随便买约 {bt['exp']:.1f} 期")
-        fav, hot, cold = favourites(recs, draws)
+        fav, hot, cold = favourites(recs, draws, skip=recent_set(draws))
         fb = fav_backtest(draws)
         fl = " ".join(x[3] for x in fav)
         why = "".join(f"<div class='n'>{x[3]} — {x[0]} 种方法都对上,共 {x[1]} 段"
