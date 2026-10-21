@@ -66,6 +66,29 @@ def method_B(sp):
     return out
 
 
+
+# 号码整齐排列(格子) + 三个复制按钮;页面要放 NUM_CSS_JS 一次
+NUM_CSS_JS = """<style>.ng{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:3px;margin:4px 0}
+.ng span{font-family:monospace;font-size:14px;text-align:center;background:#f1f5f9;border-radius:4px;padding:2px 0}
+.cb{padding:3px 8px;font-size:12px;margin:2px 4px 2px 0;border:1px solid #94a3b8;border-radius:6px;background:#fff;cursor:pointer}</style>
+<script>function cpN(b,id,m){var t=document.getElementById(id).dataset.n.split(' ');var s=m==='l'?t.join('\n'):m==='c'?t.join(','):t.map(function(x){return x+'**'}).join('\n');
+var done=function(){var o=b.textContent;b.textContent='✅ 已复制';setTimeout(function(){b.textContent=o},1200)};
+if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(s).then(done,function(){fb(s);done()});else{fb(s);done()}}
+function fb(s){var a=document.createElement('textarea');a.value=s;document.body.appendChild(a);a.select();document.execCommand('copy');a.remove()}</script>"""
+_NB = [0]
+
+
+def numblock(nums):
+    _NB[0] += 1
+    i = "nb%d" % _NB[0]
+    if not nums:
+        return "<div class='m'>(没有号码)</div>"
+    return (f"<div><button class='cb' onclick=\"cpN(this,'{i}','l')\">📋 复制(一行一个)</button>"
+            f"<button class='cb' onclick=\"cpN(this,'{i}','c')\">📋 复制(逗号)</button>"
+            f"<button class='cb' onclick=\"cpN(this,'{i}','s')\">📋 复制(**)</button></div>"
+            f"<div class='ng' id='{i}' data-n='{' '.join(nums)}'>" + "".join(f"<span>{n}</span>" for n in nums) + "</div>")
+
+
 METHODS = [("zd", "① 下一期主打(特别奖)"), ("mix", "② 本期缺席 · 混合数根"), ("split", "③ 本期缺席 · 数根分前后")]
 
 
@@ -227,7 +250,7 @@ def main():
     html = [f"<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
             f"<title>选号报告 {today}</title><style>body{{font-family:system-ui,'Microsoft YaHei';max-width:900px;margin:auto;padding:12px;background:#f8fafc;color:#0f172a}}"
             ".c{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin:10px 0}.n{font-family:monospace;font-size:14px;line-height:1.7;word-break:break-all}"
-            "h2{color:#b45309;margin:18px 0 4px}.g{color:#15803d;font-weight:700}.m{color:#64748b;font-size:13px}.fav{background:#fef3c7;border:2px solid #f59e0b}</style>"
+            "h2{color:#b45309;margin:18px 0 4px}.g{color:#15803d;font-weight:700}.m{color:#64748b;font-size:13px}.fav{background:#fef3c7;border:2px solid #f59e0b}</style>" + NUM_CSS_JS +
             f"<h1>🎯 下一期选号报告 · {today}</h1><p class='m'>三种 2D 来源 → 出号(4D 里至少 2 段对上推荐 2D;太多就要 3 段)。每家附回测:最近几期如果照这样买,下一期头二三有没有中,跟随便买同样个数比。</p>"]
     brief = [f"🎯 选号报告 {today}"]
     for mk in MARKETS:
@@ -251,7 +274,7 @@ def main():
             rows = "".join(f"<div class='n'>{r['date'][5:]} 开 {' / '.join(('<span class=g>'+x+'</span>') if x in r['got'] else x for x in r['nums'])} {'✅' if r['got'] else '❌'}</div>"
                            for r in bt["rows"][-10:][::-1])
             html.append(f"<div class='c'><b>{name}</b>{segs}"
-                        f"<div style='margin-top:6px'><b>我的号码 {len(mine)} 个</b>:</div><div class='n'>{' '.join(mine)}</div>"
+                        f"<div style='margin-top:6px'><b>我的号码 {len(mine)} 个</b>:</div>{numblock(mine)}"
                         f"<div style='margin-top:8px'><b>回测</b>:最近 {bt['n']} 期,平均每期 {bt['avg']:.0f} 个号码,"
                         f"中头二三 <b>{bt['hit']}</b> 期;随便买同样个数,平均会中 <b>{bt['exp']:.1f}</b> 期。</div>"
                         f"<div class='m'>最近 10 期(新的在上,中的标绿):</div>{rows}</div>")
@@ -261,7 +284,7 @@ def main():
         fl = " ".join(x[3] for x in fav)
         why = "".join(f"<div class='n'>{x[3]} — {x[0]} 种方法都对上,共 {x[1]} 段"
                       + (",形态是最近一个月偏多的" if x[2] > 0 else ",形态有最近一个月偏少的" if x[2] < 0 else "") + "</div>" for x in fav)
-        html.append(f"<div class='c fav'><b>⭐ 我最满意的 {len(fav)} 个</b><div class='n' style='font-size:16px'>{fl}</div>{why}"
+        html.append(f"<div class='c fav'><b>⭐ 我最满意的 {len(fav)} 个</b>{numblock([x[3] for x in fav])}{why}"
                     f"<div style='margin-top:6px'><b>回测</b>:最近 {fb['n']} 期每期照这样挑 {len(fav)} 个,中头二三 <b>{fb['hit']}</b> 期;随便买 {len(fav)} 个平均中 <b>{fb['exp']:.1f}</b> 期。"
                     + ("".join(f"<div class='n'>✅ {d} 中 <span class=g>{' '.join(g)}</span></div>" for d, g in fb["rows"][-5:][::-1])) + "</div></div>")
         bl.append(f"  ⭐最满意: {fl} | 回测 {fb['n']} 期中 {fb['hit']} 期, 随便买约 {fb['exp']:.1f} 期")

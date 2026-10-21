@@ -33,7 +33,7 @@ def stable_section(data):
             g = [n for n in x["nums"] if f(n)]
             rows += f"<div class='n'>{x['date'][5:]} {' / '.join(('<span class=g>'+n+'</span>') if n in g else n for n in x['nums'])} {'✅' if g else '❌'}</div>"
         out.append(f"<div class='c fav'><b>{mk}:{name}</b> · {len(S)} 个号码<div class='m'>{proof}(两段时间都成立,才算稳定)。号码按 2D 对上段数排,前面的优先。</div>"
-                   f"<div class='n'>{' '.join(S)}</div><div class='m' style='margin-top:6px'>最近 15 期(中的标绿):</div>{rows}</div>")
+                   f"{PR.numblock(S)}<div class='m' style='margin-top:6px'>最近 15 期(中的标绿):</div>{rows}</div>")
     return "".join(out)
 
 
@@ -53,7 +53,7 @@ def main():
         dr_ = data.get(mk, [])
         (lst, main_, f3, das, why, s24), bt = CR.run(dr_)
         cond.append(f"<div class='c'><b>{mk}</b> · 最新 {dr_[-1]['date']}<div class='m'>{H.escape(why)};前3D偏多:{'、'.join(sorted(f3)) or '不限'};打数:{'+'.join(sorted(das))};冷门不要</div>"
-                    f"<div><b>{len(lst)} 个号码</b></div><div class='n'>{' '.join(lst)}</div>"
+                    f"<div><b>{len(lst)} 个号码</b></div>{PR.numblock(lst)}"
                     f"<div class='m'>回测 {bt['n']} 期(每期约 {bt['avg']:.0f} 个):中头二三 <b>{bt['hit']}</b> 期,随便买同样个数约 <b>{bt['exp']:.1f}</b> 期</div></div>")
     notes = ""
     np_ = os.path.join(BASE, "docs", "notes.md")
@@ -64,7 +64,7 @@ def main():
 <title>每日报告 {today}</title><style>body{{font-family:system-ui,'Microsoft YaHei';max-width:900px;margin:auto;padding:12px;background:#f8fafc;color:#0f172a}}
 .c{{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin:10px 0}}.n{{font-family:monospace;font-size:14px;line-height:1.7;word-break:break-all}}
 h2{{color:#b45309;margin:20px 0 4px}}.g{{color:#15803d;font-weight:700}}.m{{color:#64748b;font-size:13px}}.fav{{background:#fef3c7;border:2px solid #f59e0b}}
-nav a{{margin-right:10px}}pre{{white-space:pre-wrap;font-size:13px}}</style>
+nav a{{margin-right:10px}}pre{{white-space:pre-wrap;font-size:13px}}</style>{PR.NUM_CSS_JS}
 <h1>📋 每日报告 · {today}</h1><nav><a href='./' target='_top'>← 回系统</a><a href='#s5'>⑤稳定</a><a href='#s4'>④主杆</a><a href='#s123'>①②③</a><a href='#tr'>形态走势</a></nav>
 {notes}
 <h2 id='s5'>⑤ 稳定条件(只有豪龙、9龙找到)</h2><div class='m'>2016-2023 年找出来,再拿 2024 年以后的资料验证,两段都多开才算。其他 6 家没有找到稳定的条件。</div>{stable_section(data)}
