@@ -254,6 +254,7 @@ tr:hover td{background:#fafaf5}
 <div id="scene-decision" class="scene-panel active">
   <div class="subtabs">
     <div class="subtab active" data-tab="overview" onclick="switchSubtab(this)">🎯 一键总览</div>
+    <div class="subtab" data-tab="dailyrep" onclick="switchSubtab(this);drLoad()" style="background:#fee2e2;border-color:#dc2626;font-weight:800">📰 每日报告</div>
     <div class="subtab" data-tab="scorecard" onclick="switchSubtab(this);scVisual()" style="background:#f1f5f9;border-color:#64748b;font-weight:800">📋 回测成绩单</div>
     <div class="subtab" data-tab="shapetrend" onclick="switchSubtab(this);stRun()" style="background:#ecfeff;border-color:#0891b2;font-weight:800">📊 形态走势</div>
     <div class="subtab" data-tab="myplay" onclick="switchSubtab(this)" style="background:#fef3c7;border-color:#f59e0b;font-weight:800">🎲 我的玩法</div>
@@ -937,6 +938,17 @@ function renderPatternTrend(){
 </div>
 
 <!-- TAB: 号码对比（贴几组号 → 重复/没重复 → 点数×打数分组 → 复制发WhatsApp） -->
+<!-- TAB: 每日报告(report.html,每天/每次开奖后自动生成) -->
+<div id="tab-dailyrep" class="panel" style="padding:8px">
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap"><b style="color:#dc2626">📰 每日报告</b>
+    <button class="btn" style="padding:3px 10px;font-size:12px" onclick="drLoad(true)">🔄 重新载入</button>
+    <a href="report.html" target="_blank" style="font-size:12px">↗ 单独打开</a><span id="dr-st" style="font-size:12px;color:#64748b"></span></div>
+  <iframe id="dr-frame" style="width:100%;height:80vh;border:1px solid #e2e8f0;border-radius:8px;background:#fff"></iframe>
+</div>
+<script>
+// 📰 每日报告: 载入同目录 report.html(手机网址 / 本机都一样);加时间戳避免看到旧的
+function drLoad(force){ var f=document.getElementById('dr-frame'); if(!f) return; if(f.src&&!force) return; f.src='report.html?t='+Date.now(); var st=document.getElementById('dr-st'); if(st) st.textContent='载入中…'; f.onload=function(){ try{ var t=f.contentDocument.title||''; st.textContent=t?('✅ '+t):'⚠️ 还没有报告'; }catch(e){ st.textContent=''; } }; }
+</script>
 <div id="tab-betlog" class="panel" style="padding:12px">
   <div class="card" style="border:3px solid #0ea5e9">
     <h3 style="color:#0369a1">📒 我的下注记录 — 每期记下你真正买的号,开奖后自动对账</h3>

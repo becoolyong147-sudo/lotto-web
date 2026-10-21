@@ -65,7 +65,7 @@ def main():
 .c{{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin:10px 0}}.n{{font-family:monospace;font-size:14px;line-height:1.7;word-break:break-all}}
 h2{{color:#b45309;margin:20px 0 4px}}.g{{color:#15803d;font-weight:700}}.m{{color:#64748b;font-size:13px}}.fav{{background:#fef3c7;border:2px solid #f59e0b}}
 nav a{{margin-right:10px}}pre{{white-space:pre-wrap;font-size:13px}}</style>
-<h1>📋 每日报告 · {today}</h1><nav><a href='./'>← 回系统</a><a href='#s5'>⑤稳定</a><a href='#s4'>④主杆</a><a href='#s123'>①②③</a><a href='#tr'>形态走势</a></nav>
+<h1>📋 每日报告 · {today}</h1><nav><a href='./' target='_top'>← 回系统</a><a href='#s5'>⑤稳定</a><a href='#s4'>④主杆</a><a href='#s123'>①②③</a><a href='#tr'>形态走势</a></nav>
 {notes}
 <h2 id='s5'>⑤ 稳定条件(只有豪龙、9龙找到)</h2><div class='m'>2016-2023 年找出来,再拿 2024 年以后的资料验证,两段都多开才算。其他 6 家没有找到稳定的条件。</div>{stable_section(data)}
 <h2 id='s4'>④ 热形态主杆(你的条件)</h2>{''.join(cond)}
