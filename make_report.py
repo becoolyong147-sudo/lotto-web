@@ -21,19 +21,65 @@ STABLE = {
 }
 
 
+def search_best(dr_):
+    """其他家: 2016-23 里找开得最多的 3 条件组合(号码 300-800 个), 再看 2024 起还在不在"""
+    import numpy as np, itertools
+    N = ["%04d" % q for q in range(10000)]
+    sm = np.array([sum(map(int, n)) for n in N]); f3 = np.array([sum(map(int, n[:3])) for n in N]); b3 = np.array([sum(map(int, n[1:])) for n in N])
+    atoms = {}
+    for lo, hi in [(0, 8), (9, 12), (13, 16), (17, 20), (21, 24), (25, 28), (29, 36)]:
+        atoms[f"4D {lo}-{hi}点"] = (sm >= lo) & (sm <= hi)
+    for lo, hi in [(0, 6), (7, 10), (11, 14), (15, 18), (19, 22), (23, 27)]:
+        atoms[f"前3D {lo}-{hi}点"] = (f3 >= lo) & (f3 <= hi); atoms[f"后3D {lo}-{hi}点"] = (b3 >= lo) & (b3 <= hi)
+    atoms["24打"] = np.array([len(set(n)) == 4 for n in N]); atoms["12打"] = np.array([len(set(n)) == 3 for n in N])
+    for d in "0123456789":
+        atoms[f"有{d}"] = np.array([d in n for n in N])
+    ctr, cte = np.zeros(10000), np.zeros(10000)
+    for x in dr_:
+        if x["date"] < "2016-01-01": continue
+        for n in x["nums"]:
+            (cte if x["date"] >= "2024-01-01" else ctr)[int(n)] += 1
+    ttr, tte = ctr.sum(), cte.sum()
+    best = None
+    for combo in itertools.combinations(atoms, 3):
+        m = atoms[combo[0]] & atoms[combo[1]] & atoms[combo[2]]
+        k = int(m.sum())
+        if not 300 <= k <= 800: continue
+        l1 = ctr[m].sum() / (ttr * k / 10000)
+        if best is None or l1 > best[0]:
+            best = (l1, combo, m, k)
+    l1, combo, m, k = best
+    l2 = cte[m].sum() / (tte * k / 10000)
+    return " + ".join(combo), (lambda n, m=m: bool(m[int(n)])), l1, l2
+
+
+def rows15(dr_, f):
+    rows = ""
+    for x in dr_[-15:][::-1]:
+        g = [n for n in x["nums"] if f(n)]
+        rows += f"<div class='n'>{x['date'][5:]} {' / '.join(('<span class=g>'+n+'</span>') if n in g else n for n in x['nums'])} {'✅' if g else '❌'}</div>"
+    hit = sum(1 for x in dr_[-15:] if any(f(n) for n in x["nums"]))
+    return f"<div class='m' style='margin-top:6px'>最近 15 期(中的标绿):中 <b>{hit}</b> 期</div>{rows}"
+
+
 def stable_section(data):
     out = []
+    for mk in PR.MARKETS:
+        if mk in STABLE: continue
+        dr_ = data[mk]
+        name, f, l1, l2 = search_best(dr_)
+        S = [n for n in ("%04d" % q for q in range(10000)) if f(n)]
+        ok = l2 >= 1.1
+        out.append(f"<div class='c'><b>{mk}:{name}</b> {'✅ 稳定' if ok else '⚠️ 不稳定'}<div class='m'>2016-23 开出是公平的 {l1:.2f} 倍(这段里最好的组合),"
+                   f"拿 2024 起来验证:{l2:.2f} 倍。{'两段都多开。' if ok else '验证段没有保持住,只能当参考。'}</div>"
+                   f"{PR.numblock(S, PR.recent_set(dr_))}{rows15(dr_, f)}</div>")
     for mk, (name, f, proof) in STABLE.items():
         dr_ = data[mk]
         S = [n for n in ("%04d" % q for q in range(10000)) if f(n)]
         rec = [r for r in (PR.recs_at(dr_, len(dr_) - 1, k) for k, _ in PR.METHODS) if r is not None]
         S.sort(key=lambda n: (-sum(PR.score(n, r) for r in rec), n))
-        rows = ""
-        for x in dr_[-15:][::-1]:
-            g = [n for n in x["nums"] if f(n)]
-            rows += f"<div class='n'>{x['date'][5:]} {' / '.join(('<span class=g>'+n+'</span>') if n in g else n for n in x['nums'])} {'✅' if g else '❌'}</div>"
-        out.append(f"<div class='c fav'><b>{mk}:{name}</b> <div class='m'>{proof}(两段时间都成立,才算稳定)。号码按 2D 对上段数排,前面的优先。</div>"
-                   f"{PR.numblock(S, PR.recent_set(dr_))}<div class='m' style='margin-top:6px'>最近 15 期(中的标绿):</div>{rows}</div>")
+        out.insert(0, f"<div class='c fav'><b>{mk}:{name}</b> ✅ 稳定<div class='m'>{proof}(两段时间都成立,才算稳定)。号码按 2D 对上段数排,前面的优先。</div>"
+                   f"{PR.numblock(S, PR.recent_set(dr_))}{rows15(dr_, f)}</div>")
     return "".join(out)
 
 
@@ -54,7 +100,10 @@ def main():
         (lst, main_, f3, das, why, s24), bt = CR.run(dr_)
         cond.append(f"<div class='c'><b>{mk}</b> · 最新 {dr_[-1]['date']}<div class='m'>{H.escape(why)};前3D偏多:{'、'.join(sorted(f3)) or '不限'};打数:{'+'.join(sorted(das))};冷门不要</div>"
                     f"{PR.numblock(lst, PR.recent_set(dr_))}"
-                    f"<div class='m'>回测 {bt['n']} 期(每期约 {bt['avg']:.0f} 个):中头二三 <b>{bt['hit']}</b> 期,随便买同样个数约 <b>{bt['exp']:.1f}</b> 期</div></div>")
+                    f"<div class='m'>回测 {bt['n']} 期(每期约 {bt['avg']:.0f} 个):中头二三 <b>{bt['hit']}</b> 期,随便买同样个数约 <b>{bt['exp']:.1f}</b> 期</div>"
+                    + "<div class='m' style='margin-top:6px'>最近 15 期(当时照这样挑的号码,中的标绿):</div>"
+                    + "".join(f"<div class='n'>{r['date'][5:]} {' / '.join(('<span class=g>'+n+'</span>') if n in r['got'] else n for n in r['nums'])} {'✅' if r['got'] else '❌'}</div>" for r in bt['rows'][-15:][::-1])
+                    + "</div>")
     notes = ""
     np_ = os.path.join(BASE, "docs", "notes.md")
     if os.path.exists(np_):
@@ -67,9 +116,9 @@ h2{{color:#b45309;margin:20px 0 4px}}.g{{color:#15803d;font-weight:700}}.m{{colo
 nav a{{margin-right:10px}}pre{{white-space:pre-wrap;font-size:13px}}</style>{PR.NUM_CSS_JS}
 <h1>📋 每日报告 · {today}</h1><div class='m'>所有号码都已去掉最近 {PR.RECENT_N} 期(头二三)开过的。</div><nav><a href='./' target='_top'>← 回系统</a><a href='#s5'>⑤稳定</a><a href='#s4'>④主杆</a><a href='#s123'>①②③</a><a href='#tr'>形态走势</a></nav>
 {notes}
-<h2 id='s5'>⑤ 稳定条件(只有豪龙、9龙找到)</h2><div class='m'>2016-2023 年找出来,再拿 2024 年以后的资料验证,两段都多开才算。其他 6 家没有找到稳定的条件。</div>{stable_section(data)}
+<h2 id='s5'>⑤ 稳定条件(8 家)</h2><div class='m'>做法:用 2016-2023 年找出「开得最多」的条件组合,再拿 2024 年以后的资料验证,两段都多开才算 ✅稳定。目前只有豪龙、9龙稳定;其他 6 家也列出来,方便你对照。</div>{stable_section(data)}
 <h2 id='s4'>④ 热形态主杆(你的条件)</h2>{''.join(cond)}
-<h2 id='s123'>①②③ 三种 2D + ⭐最满意</h2><div class='c'>{fav}<div style='margin-top:6px'><a href='picks.html'>👉 看每家完整号码和回测</a></div></div>
+<h2 id='s123'>①②③ 三种 2D + ⭐最满意</h2><div class='m'>① = 页面「下一期主打」用特别奖算出的 2D;② = 「本期缺席·混合数根」的 2D;③ = 「本期缺席·数根分前后」的 2D。号码里有两段(前/中/后 2D)落在推荐里,就列为这一种的号码。⭐最满意 = 三种都选中、对上段数最多的 12 个。每家每种的完整号码、回测、最近 10 期都在下面的链接。</div><div class='c'>{fav}<div style='margin-top:6px'><a href='picks.html'>👉 看每家完整号码和回测</a></div></div>
 <h2 id='tr'>📊 形态走势(最近 1 个月)</h2><div class='c'><pre>{H.escape(trend_txt)}</pre></div>
 <div class='m'>更新时间 {today}</div>"""
     open(os.path.join(BASE, "report.html"), "w", encoding="utf-8").write(page)

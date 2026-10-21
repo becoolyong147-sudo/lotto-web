@@ -92,15 +92,23 @@ def numblock(nums, excl=None):
     return note + _numgrid(nums)
 
 
+GROUP = 70                              # 号码每 70 个一组(用户要求), 每组各自有复制按钮
+
+
 def _numgrid(nums):
-    _NB[0] += 1
-    i = "nb%d" % _NB[0]
     if not nums:
         return "<div class='m'>(没有号码)</div>"
-    return (f"<div><b>{len(nums)} 个号码</b> <button class='cb' onclick=\"cpN(this,'{i}','l')\">📋 复制(一行一个)</button>"
-            f"<button class='cb' onclick=\"cpN(this,'{i}','c')\">📋 复制(逗号)</button>"
-            f"<button class='cb' onclick=\"cpN(this,'{i}','s')\">📋 复制(**)</button></div>"
-            f"<div class='ng' id='{i}' data-n='{' '.join(nums)}'>" + "".join(f"<span>{n}</span>" for n in nums) + "</div>")
+    out = [f"<div><b>共 {len(nums)} 个号码</b>" + (f",分 {(len(nums) + GROUP - 1) // GROUP} 组(每组 {GROUP} 个)" if len(nums) > GROUP else "") + "</div>"]
+    for g in range(0, len(nums), GROUP):
+        part = nums[g:g + GROUP]
+        _NB[0] += 1
+        i = "nb%d" % _NB[0]
+        head = f"<b>第 {g // GROUP + 1} 组</b>({len(part)} 个) " if len(nums) > GROUP else ""
+        out.append(f"<div style='margin-top:6px'>{head}<button class='cb' onclick=\"cpN(this,'{i}','l')\">📋 复制(一行一个)</button>"
+                   f"<button class='cb' onclick=\"cpN(this,'{i}','c')\">📋 复制(逗号)</button>"
+                   f"<button class='cb' onclick=\"cpN(this,'{i}','s')\">📋 复制(**)</button></div>"
+                   f"<div class='ng' id='{i}' data-n='{' '.join(part)}'>" + "".join(f"<span>{n}</span>" for n in part) + "</div>")
+    return "".join(out)
 
 
 METHODS = [("zd", "① 下一期主打(特别奖)"), ("mix", "② 本期缺席 · 混合数根"), ("split", "③ 本期缺席 · 数根分前后")]
