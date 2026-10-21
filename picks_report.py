@@ -71,7 +71,7 @@ def method_B(sp):
 NUM_CSS_JS = """<style>.ng{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:3px;margin:4px 0}
 .ng span{font-family:monospace;font-size:14px;text-align:center;background:#f1f5f9;border-radius:4px;padding:2px 0}
 .cb{padding:3px 8px;font-size:12px;margin:2px 4px 2px 0;border:1px solid #94a3b8;border-radius:6px;background:#fff;cursor:pointer}</style>
-<script>function cpN(b,id,m){var t=document.getElementById(id).dataset.n.split(' ');var s=m==='l'?t.join('\n'):m==='c'?t.join(','):t.map(function(x){return x+'**'}).join('\n');
+<script>function cpN(b,id,m){var t=document.getElementById(id).dataset.n.split(' ');var s=m==='l'?t.join('\\n'):m==='c'?t.join(','):t.map(function(x){return x+'**'}).join('\\n');
 var done=function(){var o=b.textContent;b.textContent='✅ 已复制';setTimeout(function(){b.textContent=o},1200)};
 if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(s).then(done,function(){fb(s);done()});else{fb(s);done()}}
 function fb(s){var a=document.createElement('textarea');a.value=s;document.body.appendChild(a);a.select();document.execCommand('copy');a.remove()}</script>"""
