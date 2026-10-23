@@ -59,7 +59,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add auto_results.json
-          git add report.html picks.html 2>/dev/null || true
+          git add report.html report_*.html picks.html 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No changes."
           else

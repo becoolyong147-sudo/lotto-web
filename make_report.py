@@ -63,14 +63,14 @@ def rows15(dr_, f):
 
 
 def stable_section(data):
-    out = []
+    out = {}
     for mk in PR.MARKETS:
         if mk in STABLE: continue
         dr_ = data[mk]
         name, f, l1, l2 = search_best(dr_)
         S = [n for n in ("%04d" % q for q in range(10000)) if f(n)]
         ok = l2 >= 1.1
-        out.append(f"<div class='c'><b>{mk}:{name}</b> {'✅ 稳定' if ok else '⚠️ 不稳定'}<div class='m'>2016-23 开出是公平的 {l1:.2f} 倍(这段里最好的组合),"
+        out[mk] = (f"<div class='c'><b>{mk}:{name}</b> {'✅ 稳定' if ok else '⚠️ 不稳定'}<div class='m'>2016-23 开出是公平的 {l1:.2f} 倍(这段里最好的组合),"
                    f"拿 2024 起来验证:{l2:.2f} 倍。{'两段都多开。' if ok else '验证段没有保持住,只能当参考。'}</div>"
                    f"{PR.numblock(S, PR.recent_set(dr_))}{rows15(dr_, f)}</div>")
     for mk, (name, f, proof) in STABLE.items():
@@ -78,9 +78,9 @@ def stable_section(data):
         S = [n for n in ("%04d" % q for q in range(10000)) if f(n)]
         rec = [r for r in (PR.recs_at(dr_, len(dr_) - 1, k) for k, _ in PR.METHODS) if r is not None]
         S.sort(key=lambda n: (-sum(PR.score(n, r) for r in rec), n))
-        out.insert(0, f"<div class='c fav'><b>{mk}:{name}</b> ✅ 稳定<div class='m'>{proof}(两段时间都成立,才算稳定)。号码按 2D 对上段数排,前面的优先。</div>"
+        out[mk] = (f"<div class='c fav'><b>{mk}:{name}</b> ✅ 稳定<div class='m'>{proof}(两段时间都成立,才算稳定)。号码按 2D 对上段数排,前面的优先。</div>"
                    f"{PR.numblock(S, PR.recent_set(dr_))}{rows15(dr_, f)}</div>")
-    return "".join(out)
+    return out
 
 
 def main():
@@ -94,11 +94,11 @@ def main():
     with contextlib.redirect_stdout(buf):
         TR.main()
     trend_txt = buf.getvalue()
-    cond = []
+    cond = {}
     for mk in PR.MARKETS:
         dr_ = data.get(mk, [])
         (lst, main_, f3, das, why, s24), bt = CR.run(dr_)
-        cond.append(f"<div class='c'><b>{mk}</b> · 最新 {dr_[-1]['date']}<div class='m'>{H.escape(why)};前3D偏多:{'、'.join(sorted(f3)) or '不限'};打数:{'+'.join(sorted(das))};冷门不要</div>"
+        cond[mk] = (f"<div class='c'><b>{mk}</b> · 最新 {dr_[-1]['date']}<div class='m'>{H.escape(why)};前3D偏多:{'、'.join(sorted(f3)) or '不限'};打数:{'+'.join(sorted(das))};冷门不要</div>"
                     f"{PR.numblock(lst, PR.recent_set(dr_))}"
                     f"<div class='m'>回测 {bt['n']} 期(每期约 {bt['avg']:.0f} 个):中头二三 <b>{bt['hit']}</b> 期,随便买同样个数约 <b>{bt['exp']:.1f}</b> 期</div>"
                     + "<div class='m' style='margin-top:6px'>最近 15 期(当时照这样挑的号码,中的标绿):</div>"
@@ -108,19 +108,40 @@ def main():
     np_ = os.path.join(BASE, "docs", "notes.md")
     if os.path.exists(np_):
         notes = "<div class='c' style='border:2px solid #2563eb'><b>📝 今天的重点</b><div style='white-space:pre-wrap'>" + H.escape(open(np_, encoding="utf-8").read()) + "</div></div>"
-    fav = "".join(f"<div class='n'>{H.escape(l)}</div>" for l in picks_brief.splitlines() if "【" in l or "⭐" in l)
-    page = f"""<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>
-<title>每日报告 {today}</title><style>body{{font-family:system-ui,'Microsoft YaHei';max-width:900px;margin:auto;padding:12px;background:#f8fafc;color:#0f172a}}
-.c{{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin:10px 0}}.n{{font-family:monospace;font-size:14px;line-height:1.7;word-break:break-all}}
-h2{{color:#b45309;margin:20px 0 4px}}.g{{color:#15803d;font-weight:700}}.m{{color:#64748b;font-size:13px}}.fav{{background:#fef3c7;border:2px solid #f59e0b}}
-nav a{{margin-right:10px}}pre{{white-space:pre-wrap;font-size:13px}}</style>{PR.NUM_CSS_JS}
-<h1>📋 每日报告 · {today}</h1><div class='m'>所有号码都已去掉最近 {PR.RECENT_N} 期(头二三)开过的。</div><nav><a href='./' target='_top'>← 回系统</a><a href='#s5'>⑤稳定</a><a href='#s4'>④主杆</a><a href='#s123'>①②③</a><a href='#tr'>形态走势</a></nav>
-{notes}
-<h2 id='s5'>⑤ 稳定条件(8 家)</h2><div class='m'>做法:用 2016-2023 年找出「开得最多」的条件组合,再拿 2024 年以后的资料验证,两段都多开才算 ✅稳定。目前只有豪龙、9龙稳定;其他 6 家也列出来,方便你对照。</div>{stable_section(data)}
-<h2 id='s4'>④ 热形态主杆(你的条件)</h2>{''.join(cond)}
-<h2 id='s123'>①②③ 三种 2D + ⭐最满意</h2><div class='m'>① = 页面「下一期主打」用特别奖算出的 2D;② = 「本期缺席·混合数根」的 2D;③ = 「本期缺席·数根分前后」的 2D。号码里有两段(前/中/后 2D)落在推荐里,就列为这一种的号码。⭐最满意 = 三种都选中、对上段数最多的 12 个。每家每种的完整号码、回测、最近 10 期都在下面的链接。</div><div class='c'>{fav}<div style='margin-top:6px'><a href='picks.html'>👉 看每家完整号码和回测</a></div></div>
-<h2 id='tr'>📊 形态走势(最近 1 个月)</h2><div class='c'><pre>{H.escape(trend_txt)}</pre></div>
+    import re
+    def split_by(txt, pat):
+        d, cur = {}, None
+        for l in txt.splitlines():
+            m = re.search(pat, l)
+            if m: cur = m.group(1); d[cur] = []
+            if cur: d[cur].append(l)
+        return d
+    fav_d = split_by(picks_brief, r"【(.+?)】")
+    tr_d = split_by(trend_txt, r"^\*\*(.+?)\*\*")
+    stab = stable_section(data)
+    CSS = """<style>body{font-family:system-ui,'Microsoft YaHei';max-width:900px;margin:auto;padding:12px;background:#f8fafc;color:#0f172a}
+.c{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin:10px 0}.n{font-family:monospace;font-size:14px;line-height:1.7;word-break:break-all}
+h2{color:#b45309;margin:20px 0 4px}.g{color:#15803d;font-weight:700}.m{color:#64748b;font-size:13px}.fav{background:#fef3c7;border:2px solid #f59e0b}
+nav a{margin-right:10px}pre{white-space:pre-wrap;font-size:13px}.btn{display:block;background:#fff;border:1px solid #cbd5e1;border-radius:10px;padding:14px;margin:8px 0;font-size:17px;text-decoration:none;color:#0f172a}</style>"""
+    HEAD = "<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+    links = ""
+    for k, mk in enumerate(PR.MARKETS):
+        fav = "".join(f"<div class='n'>{H.escape(l)}</div>" for l in fav_d.get(mk, []) if "⭐" in l)
+        trl = "
+".join(tr_d.get(mk, []))
+        pg = f"""{HEAD}<title>{mk} {today}</title>{CSS}{PR.NUM_CSS_JS}
+<h1>📋 {mk} · {today}</h1><div class='m'>号码都已去掉最近 {PR.RECENT_N} 期(头二三)开过的。最新一期 {data[mk][-1]['date']}</div>
+<nav><a href='report.html'>← 回总目录</a><a href='#s5'>⑤稳定</a><a href='#s4'>④主杆</a><a href='#s123'>①②③</a><a href='#tr'>形态走势</a></nav>
+<h2 id='s5'>⑤ 稳定条件</h2>{stab[mk]}
+<h2 id='s4'>④ 热形态主杆</h2>{cond[mk]}
+<h2 id='s123'>①②③ ⭐最满意</h2><div class='c'>{fav}<div style='margin-top:6px'><a href='picks.html'>👉 看完整号码和回测(picks.html)</a></div></div>
+<h2 id='tr'>📊 形态走势(最近 1 个月)</h2><div class='c'><pre>{H.escape(trl)}</pre></div>
 <div class='m'>更新时间 {today}</div>"""
+        open(os.path.join(BASE, f"report_{k}.html"), "w", encoding="utf-8").write(pg)
+        links += f"<a class='btn' href='report_{k}.html'>{mk}  <span class='m'>最新 {data[mk][-1]['date']}</span></a>"
+    page = f"""{HEAD}<title>每日报告 {today}</title>{CSS}
+<h1>📋 每日报告 · {today}</h1><div class='m'>点进公司,看那一家自己的号码和数据。</div><nav><a href='./' target='_top'>← 回系统</a></nav>
+{notes}{links}<div class='m'>更新时间 {today}</div>"""
     open(os.path.join(BASE, "report.html"), "w", encoding="utf-8").write(page)
     shutil.copy2(os.path.join(BASE, "docs", "picks", f"picks_{today}.html"), os.path.join(BASE, "picks.html"))
     print("report.html + picks.html 已生成")
