@@ -100,7 +100,6 @@ def main():
         (lst, main_, f3, das, why, s24), bt = CR.run(dr_)
         cond[mk] = (f"<div class='c'><b>{mk}</b> · 最新 {dr_[-1]['date']}<div class='m'>{H.escape(why)};前3D偏多:{'、'.join(sorted(f3)) or '不限'};打数:{'+'.join(sorted(das))};冷门不要</div>"
                     f"{PR.numblock(lst, PR.recent_set(dr_))}"
-                    f"<div class='m'>回测 {bt['n']} 期(每期约 {bt['avg']:.0f} 个):中头二三 <b>{bt['hit']}</b> 期,随便买同样个数约 <b>{bt['exp']:.1f}</b> 期</div>"
                     + "<div class='m' style='margin-top:6px'>最近 15 期(当时照这样挑的号码,中的标绿):</div>"
                     + "".join(f"<div class='n'>{r['date'][5:]} {' / '.join(('<span class=g>'+n+'</span>') if n in r['got'] else n for n in r['nums'])} {'✅' if r['got'] else '❌'}</div>" for r in bt['rows'][-15:][::-1])
                     + "</div>")
@@ -126,7 +125,7 @@ nav a{margin-right:10px}pre{white-space:pre-wrap;font-size:13px}.btn{display:blo
     HEAD = "<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
     links = ""
     for k, mk in enumerate(PR.MARKETS):
-        fav = "".join(f"<div class='n'>{H.escape(l)}</div>" for l in fav_d.get(mk, []) if "⭐" in l)
+        fav = "".join(f"<div class='n'>{H.escape(l.split(' | 回测')[0])}</div>" for l in fav_d.get(mk, []) if "⭐" in l)
         trl = chr(10).join(tr_d.get(mk, []))
         pg = f"""{HEAD}<title>{mk} {today}</title>{CSS}{PR.NUM_CSS_JS}
 <h1>📋 {mk} · {today}</h1><div class='m'>号码都已去掉最近 {PR.RECENT_N} 期(头二三)开过的。最新一期 {data[mk][-1]['date']}</div>
