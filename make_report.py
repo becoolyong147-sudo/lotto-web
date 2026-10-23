@@ -127,8 +127,7 @@ nav a{margin-right:10px}pre{white-space:pre-wrap;font-size:13px}.btn{display:blo
     links = ""
     for k, mk in enumerate(PR.MARKETS):
         fav = "".join(f"<div class='n'>{H.escape(l)}</div>" for l in fav_d.get(mk, []) if "⭐" in l)
-        trl = "
-".join(tr_d.get(mk, []))
+        trl = chr(10).join(tr_d.get(mk, []))
         pg = f"""{HEAD}<title>{mk} {today}</title>{CSS}{PR.NUM_CSS_JS}
 <h1>📋 {mk} · {today}</h1><div class='m'>号码都已去掉最近 {PR.RECENT_N} 期(头二三)开过的。最新一期 {data[mk][-1]['date']}</div>
 <nav><a href='report.html'>← 回总目录</a><a href='#s5'>⑤稳定</a><a href='#s4'>④主杆</a><a href='#s123'>①②③</a><a href='#tr'>形态走势</a></nav>
