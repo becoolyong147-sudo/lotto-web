@@ -751,16 +751,6 @@ function renderPatternTrend(){
     .sc-tb td{border-top:1px solid #e2e8f0;padding:5px 8px;vertical-align:top} .sc-n{text-align:center;white-space:nowrap}
     .sc-s{font-size:11px;color:#94a3b8;margin-top:2px} .sc-t{color:#475569;font-size:12px}
   </style>
-  <div class="card" style="border:3px solid #16a34a;margin-bottom:12px">
-    <h3 style="color:#15803d">👀 如果我照这个打法买,会怎样?</h3>
-    <div style="font-size:13px;color:#475569;line-height:1.7;margin-bottom:6px">选一个市场和一段时间,下面直接告诉你:花多少钱、中几次、亏多少,还有「随便乱买」会是什么结果。</div>
-    <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:8px">
-      <div><label style="font-size:12px;font-weight:700;display:block">市场</label><select id="scv-mk" onchange="scVisual()" style="font-size:15px;padding:5px 9px"><option>万能</option><option>跑马</option><option>多多</option><option>新加坡</option><option>豪龙</option><option>沙巴</option><option>9龙</option><option>砂拉越</option></select></div>
-      <div><label style="font-size:12px;font-weight:700;display:block">看多少期</label><select id="scv-n" onchange="scVisual()" style="font-size:15px;padding:5px 9px"><option value="60">最近 60 期</option><option value="120" selected>最近 120 期</option><option value="165">约 1 年(165 期)</option><option value="330">约 2 年(330 期)</option></select></div>
-      <button class="btn btn-green" style="padding:8px 16px;font-size:14px" onclick="scVisual()">🔄 重画</button>
-    </div>
-    <div id="scv-out"></div>
-  </div>
   <div class="card" style="border:3px solid #334155">
     <h3 style="color:#1e293b">📋 回测成绩单 · 到 2026-10-10 为止</h3>
     <div style="font-size:15px;line-height:1.9;color:#334155">
