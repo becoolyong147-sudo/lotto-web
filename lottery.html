@@ -10766,11 +10766,13 @@ function stRun(){
   if(tdim==='oe16'||tdim==='bs16'){ var A=tdim==='oe16'?'单':'大', B=tdim==='oe16'?'双':'小';
     var FIX=['0000','0001','0010','0100','1000','0011','0110','1100','0101','1010','1001','0111','1011','1101','1110','1111'].map(function(b){ return b.replace(/1/g,A).replace(/0/g,B); });
     rows.sort(function(a,b){ return FIX.indexOf(a.l)-FIX.indexOf(b.l); }); }
+  h+='<div style="display:flex;gap:8px;font-size:10px;color:#64748b"><div style="width:'+(tdim==='da'?130:82)+'px;white-space:nowrap;text-align:right">日期 →</div><div style="white-space:nowrap">'+L30.map(function(e,i){ var nw=i===L30.length-1; return '<span style="display:inline-block;width:11px;margin-right:1px;text-align:center;'+(nw?'color:#c2410c;font-weight:800':'')+'">'+(nw?'新':((L30.length-1-i)%5===0?'|':''))+'</span>'; }).join('')+'</div><div style="color:#c2410c">← 最右 = 最新 '+L30[L30.length-1].date.slice(5)+'</div></div>';
   h+=rows.map(function(o){
-    var cells=L30.map(function(e,i){ var on=e.lab[tdim]===o.l; return '<span title="'+e.date+' '+e.num+'" style="display:inline-block;width:11px;height:14px;margin-right:1px;border-radius:2px;background:'+(on?'#0891b2':'#e2e8f0')+(i===L30.length-1?';outline:1px solid #0f172a':'')+'"></span>'; }).join('');
-    var late0=false;
+    var LN=L30.length-1;
+    var cells=L30.map(function(e,i){ var on=e.lab[tdim]===o.l, nw=i===LN; return '<span title="'+e.date+' '+e.num+'" style="display:inline-block;width:11px;height:14px;margin-right:1px;border-radius:2px;background:'+(on?(nw?'#f97316':'#0891b2'):(nw?'#fde68a':'#e2e8f0'))+'"></span>'; }).join('');
+    var isNew=o.gap===0;
     var late=o.avg&&o.gap>=o.avg*1.5;
-    return '<div style="display:flex;align-items:center;gap:8px;margin:2px 0;font-size:12px"><div style="width:'+(tdim==='da'?118:64)+'px;text-align:right">'+tLabel(o.l)+'</div><div style="white-space:nowrap">'+cells+'</div><div style="width:170px;color:'+(late?'#dc2626':'#64748b')+'">'+(o.gap===0?'<b>这期刚开</b>':'已 '+o.gap+' 期没开')+'</div></div>'; }).join('');
+    return '<div style="display:flex;align-items:center;gap:8px;margin:2px 0;font-size:12px'+(isNew?';background:#fff7ed;border-radius:4px':'')+'"><div style="width:'+(tdim==='da'?130:82)+'px;white-space:nowrap;text-align:right'+(isNew?';font-weight:800;color:#c2410c':'')+'">'+(isNew?'👉 ':'')+tLabel(o.l)+'</div><div style="white-space:nowrap">'+cells+'</div><div style="width:170px;color:'+(late?'#dc2626':'#64748b')+'">'+(o.gap===0?'<b style="color:#c2410c">🟧 最新一期开这个('+L30[L30.length-1].num+')</b>':'已 '+o.gap+' 期没开')+'</div></div>'; }).join('');
   h+='<div style="font-size:11px;color:#94a3b8;margin-top:8px">⚠️ 红字=已经比平均间隔晚了很多期(只是「落后」,不代表下一期会补回来;之前的回测显示补回的机会跟随机差不多)。这里只是让你看清走向。</div></div>';
   out.innerHTML=h;
 }
