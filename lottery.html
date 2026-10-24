@@ -1329,6 +1329,38 @@ function drLoad(force){ var f=document.getElementById('dr-frame'); if(!f) return
     </div>
   </div>
 
+  <div style="margin-top:8px;background:#f5f3ff;border-radius:7px;padding:10px;border:1px solid #ddd6fe">
+    <div style="font-size:11px;font-weight:700;color:#5b21b6;margin:10px 0 6px">🔵 单双排列(16 种,哪一位单/双;勾了=只要这些,不勾=不限)
+      <span style="font-weight:400;color:#64748b">· 去掉最近</span>
+      <select id="flt-oe16-n" style="font-size:11px"><option>10</option><option selected>30</option><option>60</option><option>100</option></select>
+      <span style="font-weight:400;color:#64748b">期(头二三)没开过的</span>
+      <button type="button" class="btn" style="padding:2px 8px;font-size:11px;background:#7c3aed;color:#fff" onclick="fltOe16Recent()">⚡ 一键勾</button>
+      <button type="button" class="btn" style="padding:2px 8px;font-size:11px" onclick="fltOe16Set(null)">清除</button>
+      <span id="flt-oe16-msg" style="font-weight:400;color:#7c3aed"></span></div>
+    <div id="flt-oe16-chips" style="display:flex;gap:4px;flex-wrap:wrap"></div>
+  </div>
+<script>
+// 单双排列 16 种(固定排列,跟形态走势一样):双双双双 | 1单 | 2单 | 3单 | 单单单单
+var FLT_OE16=['0000','0001','0010','0100','1000','0011','0110','1100','0101','1010','1001','0111','1011','1101','1110','1111'].map(function(b){ return b.replace(/1/g,'单').replace(/0/g,'双'); });
+function fltOe16Of(num){ var s=String(num).padStart(4,'0'), t=''; for(var i=0;i<4;i++) t+=(+s[i])%2?'单':'双'; return t; }
+(function(){ var box=document.getElementById('flt-oe16-chips'); if(!box) return;
+  box.innerHTML=FLT_OE16.map(function(l,i){ return (i===1||i===5||i===11||i===15?'<span style="width:6px"></span>':'')+'<label class="oe16-lbl" style="cursor:pointer;background:#ede9fe;border:2px solid transparent;border-radius:5px;padding:3px 6px;font-size:12px;font-weight:700;color:#5b21b6"><input type="checkbox" class="flt-oe16" value="'+l+'" style="display:none" onchange="fltOe16Style()">'+l+'</label>'; }).join(''); })();
+function fltOe16Style(){ document.querySelectorAll('.flt-oe16').forEach(function(c){ var lb=c.parentNode; lb.style.background=c.checked?'#7c3aed':'#ede9fe'; lb.style.color=c.checked?'#fff':'#5b21b6'; lb.style.textDecoration=''; }); }
+function fltOe16Set(keep){ document.querySelectorAll('.flt-oe16').forEach(function(c){ c.checked=!!(keep&&keep[c.value]); }); fltOe16Style(); var m=document.getElementById('flt-oe16-msg'); if(m&&!keep) m.textContent=''; }
+function fltOe16Selected(){ var o={},n=0; document.querySelectorAll('.flt-oe16').forEach(function(c){ if(c.checked){o[c.value]=1;n++;} }); return n?o:null; }
+// ⚡ 一键:看这个市场最近 N 期头二三开过哪几种 → 只勾这些(没开过的不要)
+function fltOe16Recent(){
+  var mk=(document.getElementById('flt-market')||{}).value||'万能', N=parseInt((document.getElementById('flt-oe16-n')||{}).value,10)||30;
+  var all=(typeof payAllDraws==='function'?payAllDraws(mk):(DB[mk]||[])).filter(function(d){ return d&&d.date&&d.nums; }).slice().sort(function(a,b){ return String(a.date)<String(b.date)?-1:1; }).slice(-N);
+  var seen={}; all.forEach(function(d){ [0,1,2].forEach(function(k){ var n=d.nums[k]; if(n!=null&&n!=='') seen[fltOe16Of(n)]=1; }); });
+  fltOe16Set(seen);
+  var miss=FLT_OE16.filter(function(l){ return !seen[l]; });
+  document.querySelectorAll('.flt-oe16').forEach(function(c){ if(!seen[c.value]) c.parentNode.style.textDecoration='line-through'; });
+  var m=document.getElementById('flt-oe16-msg'); if(m) m.textContent=mk+' 最近 '+N+' 期:'+(miss.length?'去掉没开过的 '+miss.length+' 种('+miss.join('、')+')':'16 种都开过,没有可去掉的');
+}
+</script>
+  </div>
+
   <!-- Row 7: Buttons + 预设 -->
   <div class="row" style="margin-top:10px;flex-wrap:wrap;gap:8px">
     <button class="btn btn-green" onclick="runAdvancedFilter()" style="padding:8px 20px;font-size:14px">🔍 筛选</button>
@@ -4912,6 +4944,7 @@ function clearAdvancedFilter(){
   clearAllRoots('p4s');   // 4D指定点数
   clearAllRoots('mth');   // 指定月份
   [0,1,2,3,4].forEach(v=>{const cb=document.getElementById('flt-oe-'+v);if(cb){cb.checked=false;updateChipStyle('oe',v);}});  // 单双形态
+  try{ fltOe16Set(null); }catch(e){}  // 单双排列 16 种
   clearPts4();clearPts3b();clearPts3f();
   document.getElementById('filter-result').innerHTML='';
 }
@@ -5161,6 +5194,7 @@ function runAdvancedFilter(){
   const root4Ds=getSelectedRoots('r4d');       // V27 4D 数根
   const permTypes=getSelectedRoots('perm');    // V48 号码打数
   const oePicks=getSelectedRoots('oe');         // 单双形态（单的个数 0-4）
+  const oe16Set=(typeof fltOe16Selected==='function')?fltOe16Selected():null;   // 单双排列 16 种
   const freqTiers=getSelectedRoots('freq');    // 频率档
   const pts4Picks=getSelectedRoots('p4s');     // 4D指定点数（勾选优先于范围）
   const monthPicks=getSelectedRoots('mth');    // 指定月份（跨年份）
@@ -5211,6 +5245,7 @@ function runAdvancedFilter(){
         const pt=getPermType(num);
         if(!permTypes.includes(pt))return;
       }
+      if(oe16Set&&!oe16Set[fltOe16Of(num)])return;                    // 单双排列 16 种
       if(oePicks.length){                                              // 单双形态：单的个数
         const _s=pz(num); let _odd=0; for(let _i=0;_i<4;_i++){ if((+_s[_i])%2) _odd++; }
         if(!oePicks.includes(_odd))return;
