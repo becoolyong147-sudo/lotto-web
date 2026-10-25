@@ -8,7 +8,7 @@ import json, os, sys, io, contextlib, glob, shutil, html as H
 from datetime import date
 BASE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE)
-import trend_report as TR, picks_report as PR, cond_report as CR
+import dragon_pick as DP, trend_report as TR, picks_report as PR, cond_report as CR
 
 # ⑤ 稳定条件: 2016-23 找到, 2024 起验证仍成立(stable_cond.py)
 STABLE = {
@@ -179,6 +179,26 @@ def combo_html(mk):
     return COMBO_JS.replace("__DATA__", json.dumps(dr_, ensure_ascii=False))
 
 
+def dragon_card(mk):
+    """豪龙/9龙: 数字偏爱主推 500 个(回测有效); 其他家不给"""
+    global TRD
+    if mk not in ("豪龙", "9龙"): return ""
+    if TRD is None: TRD = TR.load()
+    dr_ = TRD[mk]
+    lst = DP.pick(dr_)
+    h, e, rows = DP.backtest(dr_, 500)
+    h2 = sum(1 for r in rows[-250:] if r[2]); e2 = 250 * (1 - (1 - DP.CAP / 10000) ** 3)
+    ds = [d for d in range(10)]
+    cnt = {d: sum(n.count(str(d)) for _, ns in dr_[-DP.WIN:] for n in ns) for d in ds}
+    hot = sorted(ds, key=lambda d: -cnt[d])[:4]; cold = sorted(ds, key=lambda d: cnt[d])[:3]
+    rec = "".join(f"<div class='n'>{d[5:]} {' / '.join(('<span class=g>'+n+'</span>') if n in g else n for n in ns)} {'✅' if g else '❌'}</div>" for d, ns, g in rows[-15:][::-1])
+    return (f"<h2>🐉 {mk}数字偏爱主推(回测有效)</h2><div class='c fav'><div style='line-height:1.8'>"
+            f"这家有稳定的数字偏好:过去 {DP.WIN} 期里最常出现 <b>{'、'.join(map(str, hot))}</b>,最少出现 <b>{'、'.join(map(str, cold))}</b>。<br>"
+            f"我按数字、打数、前后 2D 给号码打分,取最高的 <b>{len(lst)}</b> 个。<br>"
+            f"倒回去测最近 500 期(每期只用当时以前的资料):中 <b>{h}</b> 期,随便买同样个数约 <b>{e:.0f}</b> 期;最近 250 期:中 {h2} 期,随便买约 {e2:.0f} 期。</div>"
+            f"{PR.numblock(lst)}<div class='m' style='margin-top:6px'>最近 15 期(当时照这样挑的号码,中的标绿):</div>{rec}</div>")
+
+
 def main():
     today = date.today().isoformat()
     data = PR.load()
@@ -239,7 +259,7 @@ details{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px
         pg = f"""{HEAD}<title>{mk} {today}</title>{CSS}{PR.NUM_CSS_JS}
 <nav><a href='report.html'>← 回总目录</a></nav>
 {verdict}
-<h2>🎯 今天主推的号码</h2><div class='m'>已经去掉最近 {PR.RECENT_N} 期开过的号码。排前面的优先。</div>{stab[mk]}
+{dragon_card(mk)}<h2>🎯 今天主推的号码</h2><div class='m'>已经去掉最近 {PR.RECENT_N} 期开过的号码。排前面的优先。</div>{stab[mk]}
 <details><summary><b>🔥 另一种挑法(热形态)</b> · 点开看</summary>{cond[mk]}</details>
 <details><summary><b>⭐ 最满意的 12 个</b> · 点开看</summary><div class='c'>{fav}<div style='margin-top:6px'><a href='picks.html'>👉 看完整号码和回测</a></div></div></details>
 <details><summary><b>🔗 数字组合观察(比如「有1」)</b> · 点开看</summary>{combo_html(mk)}</details>
