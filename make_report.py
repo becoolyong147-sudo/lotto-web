@@ -115,7 +115,7 @@ def main():
     np_ = os.path.join(BASE, "docs", "notes.md")
     if os.path.exists(np_):
         ls_ = [l.strip() for l in open(np_, encoding="utf-8").read().splitlines() if l.strip()]
-        notes = "<div class='c' style='border:2px solid #2563eb'><b>📝 " + H.escape(ls_[0]) + "</b><ul style='padding-left:20px;line-height:1.7'>" + "".join("<li>" + H.escape(l.lstrip("- ")) + "</li>" for l in ls_[1:]) + "</ul></div>"
+        notes = "<details><summary><b>📝 " + H.escape(ls_[0]) + "(点开看详细)</b></summary><ul style='padding-left:20px;line-height:1.7'>" + "".join("<li>" + H.escape(l.lstrip("- ")) + "</li>" for l in ls_[1:]) + "</ul></details>"
     import re
     def split_by(txt, pat):
         d, cur = {}, None
@@ -154,7 +154,7 @@ details{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px
         links += f"<a class='btn' href='report_{k}.html'><b>{mk}</b> <span class='m'>最新 {data[mk][-1]['date']}</span><br><span style='font-size:14px'>{icon} 主推 {sm['n']} 个 · 近15期中 {sm['hit']} 期 · 热形态{bt_txt}</span></a>"
     page = f"""{HEAD}<title>每日报告 {today}</title>{CSS}
 <h1>📋 每日报告 · {today}</h1><div class='m'>点进公司就能看到今天买哪些号码。✅=条件比较可信,⚠️=只当参考。</div><nav><a href='./' target='_top'>← 回系统</a></nav>
-{notes}{links}<div class='m'>更新时间 {today}</div>"""
+{links}{notes}<div class='m'>更新时间 {today}</div>"""
     open(os.path.join(BASE, "report.html"), "w", encoding="utf-8").write(page)
     shutil.copy2(os.path.join(BASE, "docs", "picks", f"picks_{today}.html"), os.path.join(BASE, "picks.html"))
     print("report.html + picks.html 已生成")
