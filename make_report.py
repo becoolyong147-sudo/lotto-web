@@ -88,6 +88,63 @@ def stable_section(data):
     return out
 
 
+TRD = None
+
+
+def trend_html(mk):
+    """本月开奖走势: 白话总结 + 最近几期 + 各形态/数字的柱状对比(含上个月)"""
+    global TRD
+    from datetime import timedelta
+    if TRD is None: TRD = TR.load()
+    dr_ = TRD.get(mk, [])
+    if not dr_: return "<div class='m'>没有数据</div>"
+    last = date.fromisoformat(dr_[-1][0])
+    c1 = (last - timedelta(days=30)).isoformat(); c0 = (last - timedelta(days=60)).isoformat()
+    cur = [n for d, ns in dr_ if d > c1 for n in ns]
+    prv = [n for d, ns in dr_ if c0 < d <= c1 for n in ns]
+    nd = sum(1 for d, _ in dr_ if d > c1)
+    N = len(cur)
+    def tally(lst, f):
+        c = {}
+        for n in lst:
+            for l in (f(n) if isinstance(f(n), list) else [f(n)]): c[l] = c.get(l, 0) + 1
+        return c
+    def block(title, f, share, order=None, hint=""):
+        a, b = tally(cur, f), tally(prv, f)
+        labs = order or sorted(share, key=lambda l: -share[l])
+        mx = max([a.get(l, 0) for l in labs] + [share[l] * N for l in labs] + [1])
+        rows = ""
+        for l in labs:
+            o, e = a.get(l, 0), share[l] * N
+            zz = TR.z(o, e, N)
+            tag = "🔴偏多" if zz >= 2 else ("🔵偏少" if zz <= -2 and e >= 3 else "")
+            rows += (f"<div class='br'><span class='bl'>{H.escape(l)}</span><span class='bb'><i style='width:{o/mx*100:.0f}%'></i>"
+                     f"<u style='left:{e/mx*100:.0f}%'></u></span><span class='bv'>{o}<span class='m'> /{e:.0f}</span> {tag}</span>"
+                     f"<span class='bp m'>上月{b.get(l, 0)}</span></div>")
+        return f"<div class='c'><b>{title}</b> <span class='m'>{hint}</span>{rows}</div>"
+    ds = {d: sum(n.count(str(d)) for n in cur) for d in range(10)}
+    exp_d = N * 4 / 10
+    hot = sorted(ds, key=lambda d: -ds[d])[:3]; cold = sorted(ds, key=lambda d: ds[d])[:3]
+    top = lambda k: max(tally(cur, TR.DIMS[k]).items(), key=lambda x: x[1])
+    out = f"<div class='m'>{dr_[-30 if len(dr_)>30 else 0][0] if False else c1[5:]} ~ {dr_[-1][0][5:]} · {nd} 期 · 头二三共 {N} 个号码(每格:这个月开几次 /公平约几次)</div>"
+    out += ("<div class='c'><b>一句话</b><div style='line-height:1.8'>"
+            f"🔥 数字最常开:{'、'.join(f'{d}({ds[d]}次)' for d in hot)}<br>"
+            f"🧊 数字最少开:{'、'.join(f'{d}({ds[d]}次)' for d in cold)}<br>"
+            f"单双最常见 <b>{top('单双')[0]}</b>({top('单双')[1]}次),大小最常见 <b>{top('大小')[0]}</b>({top('大小')[1]}次),"
+            f"点数最常落在 <b>{top('点数')[0]}</b>({top('点数')[1]}次)</div></div>")
+    rows = ""
+    for d, ns in dr_[-8:][::-1]:
+        rows += "<div class='n'>" + d[5:] + " " + " / ".join(ns) + "</div>"
+    out += f"<div class='c'><b>最近 8 期开奖</b><div style='margin-top:4px'>{rows}</div></div>"
+    out += block("🔢 数字 0~9 各出现几次", lambda n: sorted(set(n)) if False else list(n), {str(d): .1 for d in range(10)}, [str(d) for d in range(10)], "(每个号码4个数字,公平约各一样多)")
+    for k, nm in (("点数", "➕ 四个数字加起来(点数)"), ("单双", "⚖️ 单双"), ("大小", "↕️ 大小(5以上算大)"), ("打数", "🔁 打数(有没有重复数字)"), ("数根", "🌳 数根"), ("前3D点数", "前3位加起来"), ("后3D点数", "后3位加起来")):
+        order = list(TR.SHARE[k].keys())
+        if k in ("点数", "前3D点数", "后3D点数", "数根", "大小", "单双"): order = sorted(order)
+        out += block(nm, TR.DIMS[k], TR.SHARE[k], order)
+    out += "<div class='m'>🔴=比公平应有的明显多,🔵=明显少(差得够大才标)。柱子是这个月开的次数,竖线是公平的话应该有的次数。</div>"
+    return out
+
+
 def main():
     today = date.today().isoformat()
     data = PR.load()
@@ -130,6 +187,10 @@ def main():
     CSS = """<style>body{font-family:system-ui,'Microsoft YaHei';max-width:900px;margin:auto;padding:12px;background:#f8fafc;color:#0f172a}
 .c{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin:10px 0}.n{font-family:monospace;font-size:14px;line-height:1.7;word-break:break-all}
 h2{color:#b45309;margin:20px 0 4px}.g{color:#15803d;font-weight:700}.m{color:#64748b;font-size:13px}.fav{background:#fef3c7;border:2px solid #f59e0b}
+
+.br{display:flex;align-items:center;gap:6px;font-size:13px;margin:3px 0}.bl{width:96px;flex:none}.bb{flex:1;position:relative;height:12px;background:#f1f5f9;border-radius:6px}
+.bb i{position:absolute;left:0;top:0;bottom:0;background:#60a5fa;border-radius:6px}.bb u{position:absolute;top:-2px;bottom:-2px;width:2px;background:#ef4444}
+.bv{width:96px;flex:none;text-align:right}.bp{width:48px;flex:none}
 details{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin:10px 0}summary{cursor:pointer;font-size:16px}nav a{margin-right:10px}pre{white-space:pre-wrap;font-size:13px}.btn{display:block;background:#fff;border:1px solid #cbd5e1;border-radius:10px;padding:14px;margin:8px 0;font-size:17px;text-decoration:none;color:#0f172a}</style>"""
     HEAD = "<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
     links = ""
@@ -147,7 +208,7 @@ details{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px
 <h2>🎯 今天主推的号码</h2><div class='m'>已经去掉最近 {PR.RECENT_N} 期开过的号码。排前面的优先。</div>{stab[mk]}
 <details><summary><b>🔥 另一种挑法(热形态)</b> · 点开看</summary>{cond[mk]}</details>
 <details><summary><b>⭐ 最满意的 12 个</b> · 点开看</summary><div class='c'>{fav}<div style='margin-top:6px'><a href='picks.html'>👉 看完整号码和回测</a></div></div></details>
-<details><summary><b>📊 这个月开奖的走势</b> · 点开看</summary><div class='c'><pre>{H.escape(trl)}</pre></div></details>
+<details><summary><b>📊 这个月开奖的走势</b> · 点开看</summary>{trend_html(mk)}</details>
 <div class='m'>更新时间 {today}</div>"""
         open(os.path.join(BASE, f"report_{k}.html"), "w", encoding="utf-8").write(pg)
         icon = "✅" if sm['ok'] else "⚠️"
