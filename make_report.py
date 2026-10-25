@@ -4,7 +4,7 @@ make_report.py — 手机看的每日报告 report.html(放到 lotto-web, 网址
 内容: ⑤ 稳定条件(只有豪龙/9龙找到) · ④ 热形态主杆 · ①②③ 三种 2D + ⭐最满意(详细页 picks.html) · 形态走势
 另外把 docs/notes.md(Claude 写的「今天的重点」, 若有)放在最上面。
 """
-import os, sys, io, contextlib, glob, shutil, html as H
+import json, os, sys, io, contextlib, glob, shutil, html as H
 from datetime import date
 BASE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE)
@@ -145,6 +145,40 @@ def trend_html(mk):
     return out
 
 
+COMBO_JS = r"""<div class='c'><b>🔗 数字组合观察</b> <span class='m'>勾你想看的数字,看每个奖含这些数字的次数</span>
+<div id='cb_D' style='margin:8px 0'></div>
+<div>方式:<select id='cb_M'><option value='all'>号码里同时有这些数字</option><option value='any'>号码里有其中任何一个</option></select>
+ 范围:<select id='cb_W'><option>30</option><option selected>100</option><option>300</option></select> 期</div>
+<div id='cb_O' style='margin-top:8px;line-height:1.8'></div></div>
+<script>(function(){
+const DR=__DATA__;const D=document.getElementById('cb_D'),O=document.getElementById('cb_O'),M=document.getElementById('cb_M'),W=document.getElementById('cb_W');
+const sel=new Set([1]);
+for(let d=0;d<10;d++){const l=document.createElement('label');l.style.cssText='display:inline-block;margin:2px 8px 2px 0;font-size:18px';
+ const c=document.createElement('input');c.type='checkbox';c.checked=d==1;c.onchange=()=>{c.checked?sel.add(d):sel.delete(d);go()};l.append(c,' '+d);D.append(l)}
+function ok(n,mode){const S=[...sel];if(!S.length)return false;return mode=='all'?S.every(d=>n.includes(d)):S.some(d=>n.includes(d))}
+function go(){const mode=M.value,w=+W.value,rows=DR.slice(-w);if(!sel.size){O.textContent='请先勾一个数字';return}
+ let p=0;for(let i=0;i<10000;i++)if(ok(String(i).padStart(4,'0'),mode))p++;p/=10000;
+ const names=['头奖','二奖','三奖'];let h=[0,0,0],any=0,all=0;
+ rows.forEach(r=>{let k=0;r[1].forEach((n,i)=>{if(ok(n,mode)){h[i]++;k++}});if(k)any++;if(k==3)all++});
+ const N=rows.length,pa=1-Math.pow(1-p,3);
+ let miss=0;for(let i=DR.length-1;i>=0;i--){if(DR[i][1].some(n=>ok(n,mode)))break;miss++}
+ const pc=x=>(x*100).toFixed(0)+'%';
+ let t=`<div class='m'>随便一个号码含这些数字的机会约 <b>${pc(p)}</b>;一期三个奖至少有一个约 <b>${pc(pa)}</b></div>`;
+ names.forEach((nm,i)=>t+=`${nm}:<b>${h[i]}</b>/${N} 期有(${pc(h[i]/N)}) <span class='m'>公平约 ${pc(p)}</span><br>`);
+ t+=`<b>一期三个奖至少一个有:${any}/${N} 期(${pc(any/N)})</b> <span class='m'>公平约 ${pc(pa)}</span><br>三个奖都有:${all} 期 <span class='m'>公平约 ${pc(p*p*p)}</span><br>`;
+ t+=`目前这个条件已经连续 <b>${miss}</b> 期没出现<br><div class='m' style='margin-top:6px'>最近 20 期(头/二/三,绿=有):</div>`;
+ DR.slice(-20).reverse().forEach(r=>{t+=`<div class='n'>${r[0].slice(5)} `+r[1].map(n=>ok(n,mode)?`<span class=g>${n}</span>`:n).join(' / ')+'</div>'});
+ O.innerHTML=t}
+M.onchange=W.onchange=go;go()})()</script>"""
+
+
+def combo_html(mk):
+    global TRD
+    if TRD is None: TRD = TR.load()
+    dr_ = TRD.get(mk, [])[-300:]
+    return COMBO_JS.replace("__DATA__", json.dumps(dr_, ensure_ascii=False))
+
+
 def main():
     today = date.today().isoformat()
     data = PR.load()
@@ -208,6 +242,7 @@ details{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px
 <h2>🎯 今天主推的号码</h2><div class='m'>已经去掉最近 {PR.RECENT_N} 期开过的号码。排前面的优先。</div>{stab[mk]}
 <details><summary><b>🔥 另一种挑法(热形态)</b> · 点开看</summary>{cond[mk]}</details>
 <details><summary><b>⭐ 最满意的 12 个</b> · 点开看</summary><div class='c'>{fav}<div style='margin-top:6px'><a href='picks.html'>👉 看完整号码和回测</a></div></div></details>
+<details><summary><b>🔗 数字组合观察(比如「有1」)</b> · 点开看</summary>{combo_html(mk)}</details>
 <details><summary><b>📊 这个月开奖的走势</b> · 点开看</summary>{trend_html(mk)}</details>
 <div class='m'>更新时间 {today}</div>"""
         open(os.path.join(BASE, f"report_{k}.html"), "w", encoding="utf-8").write(pg)
