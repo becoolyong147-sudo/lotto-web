@@ -126,7 +126,7 @@ def trend_html(mk):
     exp_d = N * 4 / 10
     hot = sorted(ds, key=lambda d: -ds[d])[:3]; cold = sorted(ds, key=lambda d: ds[d])[:3]
     top = lambda k: max(tally(cur, TR.DIMS[k]).items(), key=lambda x: x[1])
-    out = f"<div class='m'>{dr_[-30 if len(dr_)>30 else 0][0] if False else c1[5:]} ~ {dr_[-1][0][5:]} · {nd} 期 · 头二三共 {N} 个号码(每格:这个月开几次 /公平约几次)</div>"
+    out = f"<div class='m'>{c1[5:]} ~ {dr_[-1][0][5:]} · {nd} 期 · 头二三共 {N} 个号码(每格:这个月开几次 /公平约几次)</div>"
     out += ("<div class='c'><b>一句话</b><div style='line-height:1.8'>"
             f"🔥 数字最常开:{'、'.join(f'{d}({ds[d]}次)' for d in hot)}<br>"
             f"🧊 数字最少开:{'、'.join(f'{d}({ds[d]}次)' for d in cold)}<br>"
@@ -136,7 +136,7 @@ def trend_html(mk):
     for d, ns in dr_[-8:][::-1]:
         rows += "<div class='n'>" + d[5:] + " " + " / ".join(ns) + "</div>"
     out += f"<div class='c'><b>最近 8 期开奖</b><div style='margin-top:4px'>{rows}</div></div>"
-    out += block("🔢 数字 0~9 各出现几次", lambda n: sorted(set(n)) if False else list(n), {str(d): .1 for d in range(10)}, [str(d) for d in range(10)], "(每个号码4个数字,公平约各一样多)")
+    out += block("🔢 数字 0~9 各出现几次", lambda n: sorted(set(n)) if False else list(n), {str(d): .4 for d in range(10)}, [str(d) for d in range(10)], "(每个号码4个数字,公平约各一样多)")
     for k, nm in (("点数", "➕ 四个数字加起来(点数)"), ("单双", "⚖️ 单双"), ("大小", "↕️ 大小(5以上算大)"), ("打数", "🔁 打数(有没有重复数字)"), ("数根", "🌳 数根"), ("前3D点数", "前3位加起来"), ("后3D点数", "后3位加起来")):
         order = list(TR.SHARE[k].keys())
         if k in ("点数", "前3D点数", "后3D点数", "数根", "大小", "单双"): order = sorted(order)
