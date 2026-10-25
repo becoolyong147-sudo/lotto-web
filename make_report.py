@@ -62,6 +62,9 @@ def rows15(dr_, f):
     return f"<div class='m' style='margin-top:6px'>最近 15 期(中的标绿):中 <b>{hit}</b> 期</div>{rows}"
 
 
+SUM = {}
+
+
 def stable_section(data):
     out = {}
     for mk in PR.MARKETS:
@@ -70,15 +73,17 @@ def stable_section(data):
         name, f, l1, l2 = search_best(dr_)
         S = [n for n in ("%04d" % q for q in range(10000)) if f(n)]
         ok = l2 >= 1.1
-        out[mk] = (f"<div class='c'><b>{mk}:{name}</b> {'✅ 稳定' if ok else '⚠️ 不稳定'}<div class='m'>2016-23 开出是公平的 {l1:.2f} 倍(这段里最好的组合),"
-                   f"拿 2024 起来验证:{l2:.2f} 倍。{'两段都多开。' if ok else '验证段没有保持住,只能当参考。'}</div>"
+        SUM[mk] = dict(n=len(S), ok=ok, hit=sum(1 for x in dr_[-15:] if any(f(n) for n in x["nums"])))
+        out[mk] = (f"<div class='c'><b>{mk}:{name}</b> {'✅ 稳定' if ok else '⚠️ 不稳定'}<details><summary class='m'>挑号条件(技术说明)</summary><div class='m'>2016-23 开出是公平的 {l1:.2f} 倍,"
+                   f"2024 起验证:{l2:.2f} 倍。</div></details>"
                    f"{PR.numblock(S, PR.recent_set(dr_))}{rows15(dr_, f)}</div>")
     for mk, (name, f, proof) in STABLE.items():
         dr_ = data[mk]
         S = [n for n in ("%04d" % q for q in range(10000)) if f(n)]
+        SUM[mk] = dict(n=len(S), ok=True, hit=sum(1 for x in dr_[-15:] if any(f(n) for n in x["nums"])))
         rec = [r for r in (PR.recs_at(dr_, len(dr_) - 1, k) for k, _ in PR.METHODS) if r is not None]
         S.sort(key=lambda n: (-sum(PR.score(n, r) for r in rec), n))
-        out[mk] = (f"<div class='c fav'><b>{mk}:{name}</b> ✅ 稳定<div class='m'>{proof}(两段时间都成立,才算稳定)。号码按 2D 对上段数排,前面的优先。</div>"
+        out[mk] = (f"<div class='c fav'><b>{mk}:{name}</b> ✅ 稳定<details><summary class='m'>挑号条件(技术说明)</summary><div class='m'>{proof}(两段时间都成立,才算稳定)</div></details>"
                    f"{PR.numblock(S, PR.recent_set(dr_))}{rows15(dr_, f)}</div>")
     return out
 
@@ -95,9 +100,11 @@ def main():
         TR.main()
     trend_txt = buf.getvalue()
     cond = {}
+    BT = {}
     for mk in PR.MARKETS:
         dr_ = data.get(mk, [])
         (lst, main_, f3, das, why, s24), bt = CR.run(dr_)
+        BT[mk] = bt
         cond[mk] = (f"<div class='c'><b>{mk}</b> · 最新 {dr_[-1]['date']}<div class='m'>{H.escape(why)};前3D偏多:{'、'.join(sorted(f3)) or '不限'};打数:{'+'.join(sorted(das))};冷门不要</div>"
                     f"{PR.numblock(lst, PR.recent_set(dr_))}"
                     f"<div class='m'>回测 {bt['n']} 期(每期约 {bt['avg']:.0f} 个):中头二三 <b>{bt['hit']}</b> 期,随便买同样个数约 <b>{bt['exp']:.1f}</b> 期</div>"
@@ -107,7 +114,8 @@ def main():
     notes = ""
     np_ = os.path.join(BASE, "docs", "notes.md")
     if os.path.exists(np_):
-        notes = "<div class='c' style='border:2px solid #2563eb'><b>📝 今天的重点</b><div style='white-space:pre-wrap'>" + H.escape(open(np_, encoding="utf-8").read()) + "</div></div>"
+        ls_ = [l.strip() for l in open(np_, encoding="utf-8").read().splitlines() if l.strip()]
+        notes = "<div class='c' style='border:2px solid #2563eb'><b>📝 " + H.escape(ls_[0]) + "</b><ul style='padding-left:20px;line-height:1.7'>" + "".join("<li>" + H.escape(l.lstrip("- ")) + "</li>" for l in ls_[1:]) + "</ul></div>"
     import re
     def split_by(txt, pat):
         d, cur = {}, None
@@ -122,24 +130,30 @@ def main():
     CSS = """<style>body{font-family:system-ui,'Microsoft YaHei';max-width:900px;margin:auto;padding:12px;background:#f8fafc;color:#0f172a}
 .c{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin:10px 0}.n{font-family:monospace;font-size:14px;line-height:1.7;word-break:break-all}
 h2{color:#b45309;margin:20px 0 4px}.g{color:#15803d;font-weight:700}.m{color:#64748b;font-size:13px}.fav{background:#fef3c7;border:2px solid #f59e0b}
-nav a{margin-right:10px}pre{white-space:pre-wrap;font-size:13px}.btn{display:block;background:#fff;border:1px solid #cbd5e1;border-radius:10px;padding:14px;margin:8px 0;font-size:17px;text-decoration:none;color:#0f172a}</style>"""
+details{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin:10px 0}summary{cursor:pointer;font-size:16px}nav a{margin-right:10px}pre{white-space:pre-wrap;font-size:13px}.btn{display:block;background:#fff;border:1px solid #cbd5e1;border-radius:10px;padding:14px;margin:8px 0;font-size:17px;text-decoration:none;color:#0f172a}</style>"""
     HEAD = "<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
     links = ""
     for k, mk in enumerate(PR.MARKETS):
         fav = "".join(f"<div class='n'>{H.escape(l)}</div>" for l in fav_d.get(mk, []) if "⭐" in l)
         trl = chr(10).join(tr_d.get(mk, []))
+        sm = SUM[mk]; bt = BT[mk]
+        better = bt['hit'] - bt['exp']
+        bt_txt = "比随便买好" if better >= 3 else ("比随便买差" if better <= -3 else "跟随便买差不多")
+        trust = "✅ 这个条件两段时间都撑得住,可信度较高" if sm['ok'] else "⚠️ 这个条件近期没撑住,当参考就好"
+        verdict = f"<div class='c fav'><div style='font-size:18px'><b>{mk}</b> · 最新一期 {data[mk][-1]['date']}</div>"                   f"<div style='font-size:16px;line-height:1.8;margin-top:6px'>🎯 今天主推 <b>{sm['n']}</b> 个号码(往下看,点「复制」就能用)<br>"                   f"📅 最近15期里中过 <b>{sm['hit']}</b> 期<br>{trust}<br>"                   f"🔥 另一种挑法(热形态)过去{bt['n']}期:中 {bt['hit']} 期,随便买约 {bt['exp']:.0f} 期 → <b>{bt_txt}</b></div></div>"
         pg = f"""{HEAD}<title>{mk} {today}</title>{CSS}{PR.NUM_CSS_JS}
-<h1>📋 {mk} · {today}</h1><div class='m'>号码都已去掉最近 {PR.RECENT_N} 期(头二三)开过的。最新一期 {data[mk][-1]['date']}</div>
-<nav><a href='report.html'>← 回总目录</a><a href='#s5'>⑤稳定</a><a href='#s4'>④主杆</a><a href='#s123'>①②③</a><a href='#tr'>形态走势</a></nav>
-<h2 id='s5'>⑤ 稳定条件</h2>{stab[mk]}
-<h2 id='s4'>④ 热形态主杆</h2>{cond[mk]}
-<h2 id='s123'>①②③ ⭐最满意</h2><div class='c'>{fav}<div style='margin-top:6px'><a href='picks.html'>👉 看完整号码和回测(picks.html)</a></div></div>
-<h2 id='tr'>📊 形态走势(最近 1 个月)</h2><div class='c'><pre>{H.escape(trl)}</pre></div>
+<nav><a href='report.html'>← 回总目录</a></nav>
+{verdict}
+<h2>🎯 今天主推的号码</h2><div class='m'>已经去掉最近 {PR.RECENT_N} 期开过的号码。排前面的优先。</div>{stab[mk]}
+<details><summary><b>🔥 另一种挑法(热形态)</b> · 点开看</summary>{cond[mk]}</details>
+<details><summary><b>⭐ 最满意的 12 个</b> · 点开看</summary><div class='c'>{fav}<div style='margin-top:6px'><a href='picks.html'>👉 看完整号码和回测</a></div></div></details>
+<details><summary><b>📊 这个月开奖的走势</b> · 点开看</summary><div class='c'><pre>{H.escape(trl)}</pre></div></details>
 <div class='m'>更新时间 {today}</div>"""
         open(os.path.join(BASE, f"report_{k}.html"), "w", encoding="utf-8").write(pg)
-        links += f"<a class='btn' href='report_{k}.html'>{mk}  <span class='m'>最新 {data[mk][-1]['date']}</span></a>"
+        icon = "✅" if sm['ok'] else "⚠️"
+        links += f"<a class='btn' href='report_{k}.html'><b>{mk}</b> <span class='m'>最新 {data[mk][-1]['date']}</span><br><span style='font-size:14px'>{icon} 主推 {sm['n']} 个 · 近15期中 {sm['hit']} 期 · 热形态{bt_txt}</span></a>"
     page = f"""{HEAD}<title>每日报告 {today}</title>{CSS}
-<h1>📋 每日报告 · {today}</h1><div class='m'>点进公司,看那一家自己的号码和数据。</div><nav><a href='./' target='_top'>← 回系统</a></nav>
+<h1>📋 每日报告 · {today}</h1><div class='m'>点进公司就能看到今天买哪些号码。✅=条件比较可信,⚠️=只当参考。</div><nav><a href='./' target='_top'>← 回系统</a></nav>
 {notes}{links}<div class='m'>更新时间 {today}</div>"""
     open(os.path.join(BASE, "report.html"), "w", encoding="utf-8").write(page)
     shutil.copy2(os.path.join(BASE, "docs", "picks", f"picks_{today}.html"), os.path.join(BASE, "picks.html"))
