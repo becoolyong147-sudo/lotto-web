@@ -204,6 +204,48 @@ def dragon_card(mk):
 
 PN = ["头奖", "二奖", "三奖"]
 
+# 📋 最近几期明细: 自己选期数 / 奖 → 一期一行(号码 + 单双/大小/点数/打数/前3/后3/数根), 底下只数这几期各出现几次, 点一下就把那几期标出来
+DETAIL_JS = r"""<div class='c' style='border:2px solid #0891b2'><b style='font-size:17px'>📋 最近几期明细</b>
+<div style='margin:8px 0'>看几期:<span id='dt_W'></span></div>
+<div style='margin:4px 0 8px'>哪个奖:<span id='dt_P'></span></div>
+<div style='overflow-x:auto'><table id='dt_T' style='border-collapse:collapse;font-size:14px;width:100%'></table></div>
+<div id='dt_S' style='margin-top:10px;line-height:2'></div>
+<div class='m'>点下面任何一个(例如「2单2双」),上面有这个样子的那几期就会亮黄色;再点一次取消。</div></div>
+<script>(function(){
+const DR=__DATA__, PN=['头','二','三'];
+let W=5, P=-1, HL=null;
+const odd=d=>d%2==1, sm=n=>[...n].reduce((a,c)=>a+ +c,0);
+function dr(x){return x==0?0:(x%9||9)}
+function da(n){const c={};[...n].forEach(d=>c[d]=(c[d]||0)+1);const v=Object.values(c).sort().reverse().join('');return {'1111':'24打','211':'12打','22':'6打','31':'4打','4':'1打'}[v]}
+function oe(n){const k=[...n].filter(d=>odd(+d)).length;return k==4?'4单':k==0?'4双':k+'单'+(4-k)+'双'}
+function bs(n){const k=[...n].filter(d=>+d>=5).length;return k==4?'4大':k==0?'4小':k+'大'+(4-k)+'小'}
+const COLS=[['单双',oe],['大小',bs],['点数',n=>sm(n)+'点'],['打数',da],['前3位',n=>sm(n.slice(0,3))+'点'],['后3位',n=>sm(n.slice(1))+'点'],['数根',n=>'根'+dr(sm(n))]];
+function btns(id,arr,cur,fn){const b=document.getElementById(id);b.innerHTML='';arr.forEach(([v,l])=>{const x=document.createElement('button');x.textContent=l;x.style.cssText='margin:2px 4px 2px 0;padding:6px 12px;font-size:15px;border-radius:8px;border:1px solid #0891b2;'+(v===cur?'background:#0891b2;color:#fff':'background:#fff;color:#0e7490');x.onclick=()=>fn(v);b.append(x)})}
+function go(){
+ btns('dt_W',[[5,'5期'],[10,'10期'],[20,'20期'],[30,'30期'],[50,'50期']],W,v=>{W=v;HL=null;go()});
+ btns('dt_P',[[-1,'头二三都看'],[0,'头奖'],[1,'二奖'],[2,'三奖']],P,v=>{P=v;HL=null;go()});
+ const rows=[];DR.slice(-W).reverse().forEach(r=>r[1].forEach((n,i)=>{if(P<0||P==i)rows.push([r[0],i,n])}));
+ let h='<tr style="background:#ecfeff;color:#0e7490"><th style="text-align:left;padding:4px">日期</th><th>奖</th><th>号码</th>'+COLS.map(c=>'<th style="padding:4px">'+c[0]+'</th>').join('')+'</tr>';
+ rows.forEach(([d,i,n],k)=>{const v=COLS.map(c=>c[1](n));const on=HL&&v[HL[0]]===HL[1];
+  const top=k>0&&rows[k-1][0]!==d?'border-top:2px solid #94a3b8;':'border-top:1px solid #e2e8f0;';
+  h+='<tr style="'+top+(on?'background:#fef08a;':'')+'"><td style="padding:4px;white-space:nowrap">'+d.slice(5)+'</td><td style="text-align:center">'+PN[i]+'</td><td style="text-align:center;font-family:monospace;font-size:16px;font-weight:700">'+n+'</td>'+v.map((x,j)=>'<td style="text-align:center;padding:4px;white-space:nowrap'+(HL&&HL[0]===j&&x===HL[1]?';font-weight:800;color:#b45309':'')+'">'+x+'</td>').join('')+'</tr>'});
+ document.getElementById('dt_T').innerHTML=h;
+ let s='<b>这 '+W+' 期'+(P<0?'头二三':PN[P]+'奖')+'('+rows.length+' 个号码)各出现几次:</b><br>';
+ COLS.forEach((c,j)=>{const t={};rows.forEach(r=>{const x=c[1](r[2]);t[x]=(t[x]||0)+1});
+  s+='<div><span style="display:inline-block;width:52px;color:#0e7490;font-weight:700">'+c[0]+'</span>'+Object.entries(t).sort((a,b)=>b[1]-a[1]).map(([x,k])=>'<span data-j="'+j+'" data-x="'+x+'" style="cursor:pointer;display:inline-block;margin:2px 4px 2px 0;padding:2px 8px;border-radius:12px;'+(HL&&HL[0]===j&&HL[1]===x?'background:#f59e0b;color:#fff':'background:#f1f5f9')+'">'+x+' ×'+k+'</span>').join('')+'</div>'});
+ const dg={};rows.forEach(r=>[...r[2]].forEach(d=>dg[d]=(dg[d]||0)+1));
+ s+='<div><span style="display:inline-block;width:52px;color:#0e7490;font-weight:700">数字</span>'+[...'0123456789'].map(d=>'<span style="display:inline-block;margin:2px 4px 2px 0;padding:2px 8px;border-radius:12px;background:'+(dg[d]?'#f1f5f9':'#fee2e2')+'">'+d+' ×'+(dg[d]||0)+'</span>').join('')+'</div>';
+ const S=document.getElementById('dt_S');S.innerHTML=s;
+ S.querySelectorAll('[data-j]').forEach(e=>e.onclick=()=>{const j=+e.dataset.j,x=e.dataset.x;HL=(HL&&HL[0]===j&&HL[1]===x)?null:[j,x];go()});
+}
+go()})()</script>"""
+
+
+def detail_html(mk):
+    global TRD
+    if TRD is None: TRD = TR.load()
+    return DETAIL_JS.replace("__DATA__", json.dumps(TRD.get(mk, [])[-50:], ensure_ascii=False))
+
 
 def prize_html(mk, dr_, f):
     """头奖 / 二奖 / 三奖 各自分开看: 最近开什么、这个月的形态、主推号码在这个奖位的历史成绩"""
@@ -303,6 +345,7 @@ details{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px
         verdict = f"<div class='c fav'><div style='font-size:18px'><b>{mk}</b> · 最新一期 {data[mk][-1]['date']}</div>"                   f"<div style='font-size:16px;line-height:1.8;margin-top:6px'>🎯 今天主推 <b>{sm['n']}</b> 个号码(往下看,点「复制」就能用)<br>"                   f"📅 最近15期里中过 <b>{sm['hit']}</b> 期<br>{trust}<br>"                   f"🔥 另一种挑法(热形态)过去{bt['n']}期:中 {bt['hit']} 期,随便买约 {bt['exp']:.0f} 期 → <b>{bt_txt}</b></div></div>"
         pg = f"""{HEAD}<title>{mk} {today}</title>{CSS}{PR.NUM_CSS_JS}
 <nav><a href='report.html'>← 回总目录</a></nav>
+{detail_html(mk)}
 {verdict}
 {dragon_card(mk)}<h2>🎯 今天主推的号码</h2><div class='m'>已经去掉最近 {PR.RECENT_N} 期开过的号码。排前面的优先。</div>{stab[mk]}
 <h2>🏆 头奖 / 二奖 / 三奖 分开看</h2>{prize_html(mk, data[mk], FUNC.get(mk))}
