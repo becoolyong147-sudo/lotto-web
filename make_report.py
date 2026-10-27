@@ -63,6 +63,7 @@ def rows15(dr_, f):
 
 
 SUM = {}
+FUNC = {}                               # 各家主推条件(号码 → 是否入选), 头二三分开看要用
 
 
 def stable_section(data):
@@ -73,6 +74,7 @@ def stable_section(data):
         name, f, l1, l2 = search_best(dr_)
         S = [n for n in ("%04d" % q for q in range(10000)) if f(n)]
         ok = l2 >= 1.1
+        FUNC[mk] = f
         SUM[mk] = dict(n=len(S), ok=ok, hit=sum(1 for x in dr_[-15:] if any(f(n) for n in x["nums"])))
         out[mk] = (f"<div class='c'><b>{mk}:{name}</b> {'✅ 稳定' if ok else '⚠️ 不稳定'}<details><summary class='m'>挑号条件(技术说明)</summary><div class='m'>2016-23 开出是公平的 {l1:.2f} 倍,"
                    f"2024 起验证:{l2:.2f} 倍。</div></details>"
@@ -80,6 +82,7 @@ def stable_section(data):
     for mk, (name, f, proof) in STABLE.items():
         dr_ = data[mk]
         S = [n for n in ("%04d" % q for q in range(10000)) if f(n)]
+        FUNC[mk] = f
         SUM[mk] = dict(n=len(S), ok=True, hit=sum(1 for x in dr_[-15:] if any(f(n) for n in x["nums"])))
         rec = [r for r in (PR.recs_at(dr_, len(dr_) - 1, k) for k, _ in PR.METHODS) if r is not None]
         S.sort(key=lambda n: (-sum(PR.score(n, r) for r in rec), n))
@@ -199,6 +202,48 @@ def dragon_card(mk):
             f"{PR.numblock(lst)}<div class='m' style='margin-top:6px'>最近 15 期(当时照这样挑的号码,中的标绿):</div>{rec}</div>")
 
 
+PN = ["头奖", "二奖", "三奖"]
+
+
+def prize_html(mk, dr_, f):
+    """头奖 / 二奖 / 三奖 各自分开看: 最近开什么、这个月的形态、主推号码在这个奖位的历史成绩"""
+    from datetime import timedelta
+    last = date.fromisoformat(dr_[-1]["date"]); c1 = (last - timedelta(days=30)).isoformat()
+    n_all = sum(1 for n in ("%04d" % q for q in range(10000)) if f(n)) if f else 0
+    out = ""
+    for p in range(3):
+        seq = [(x["date"], x["nums"][p]) for x in dr_]
+        mon = [n for d, n in seq if d > c1]; N = len(mon)
+        def best(k):
+            c = {}
+            for n in mon:
+                l = TR.DIMS[k](n); c[l] = c.get(l, 0) + 1
+            l, o = max(c.items(), key=lambda t: t[1])
+            e = TR.SHARE[k][l] * N
+            tag = " 🔴明显多" if TR.z(o, e, N) >= 2 else ""
+            return f"<b>{H.escape(l)}</b> {o} 次<span class='m'>(公平约 {e:.0f})</span>{tag}"
+        ds = {d: sum(n.count(str(d)) for n in mon) for d in range(10)}
+        hot = sorted(ds, key=lambda d: -ds[d])[:3]; cold = [d for d in range(10) if ds[d] == 0] or sorted(ds, key=lambda d: ds[d])[:2]
+        rows = "".join(f"<div class='n'>{d[5:]} {('<span class=g>'+n+'</span> ✅主推里有') if f and f(n) else n}</div>" for d, n in seq[-10:][::-1])
+        bt = ""
+        if f:
+            te = [(d, n) for d, n in seq if d >= "2024-01-01"]
+            h = sum(1 for _, n in te if f(n)); e = len(te) * n_all / 10000
+            gap = 0
+            for _, n in reversed(seq):
+                if f(n): break
+                gap += 1
+            bt = (f"<div style='margin-top:6px'>🎯 主推号码在<b>{PN[p]}</b>的成绩(2024 年起 {len(te)} 期):中 <b>{h}</b> 次,随便买同样个数约 <b>{e:.1f}</b> 次;"
+                  f"{PN[p]}已经 <b>{gap}</b> 期没开到主推号码。</div>")
+        out += (f"<details><summary><b>🏆 {PN[p]}</b> · 最新 {seq[-1][1]} · 点开看</summary><div class='c'>"
+                f"<div style='line-height:1.9'>这个月({c1[5:]} 起 {N} 期)的{PN[p]}:<br>"
+                f"🔥 数字最常开:{'、'.join(f'{d}({ds[d]}次)' for d in hot)};🧊 {'没开过' if ds[cold[0]] == 0 else '最少开'}:{'、'.join(map(str, cold))}<br>"
+                f"➕ 点数最常落在 {best('点数')}<br>⚖️ 单双最常见 {best('单双')}<br>↕️ 大小最常见 {best('大小')}<br>"
+                f"🔁 打数最常见 {best('打数')}<br>前3位加起来最常 {best('前3D点数')}<br>后3位加起来最常 {best('后3D点数')}</div>"
+                f"{bt}<div class='m' style='margin-top:6px'>最近 10 期{PN[p]}(绿 = 在今天的主推条件里):</div>{rows}</div></details>")
+    return out
+
+
 def main():
     today = date.today().isoformat()
     data = PR.load()
@@ -260,6 +305,7 @@ details{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px
 <nav><a href='report.html'>← 回总目录</a></nav>
 {verdict}
 {dragon_card(mk)}<h2>🎯 今天主推的号码</h2><div class='m'>已经去掉最近 {PR.RECENT_N} 期开过的号码。排前面的优先。</div>{stab[mk]}
+<h2>🏆 头奖 / 二奖 / 三奖 分开看</h2>{prize_html(mk, data[mk], FUNC.get(mk))}
 <details><summary><b>🔥 另一种挑法(热形态)</b> · 点开看</summary>{cond[mk]}</details>
 <details><summary><b>⭐ 最满意的 12 个</b> · 点开看</summary><div class='c'>{fav}<div style='margin-top:6px'><a href='picks.html'>👉 看完整号码和回测</a></div></div></details>
 <details><summary><b>🔗 数字组合观察(比如「有1」)</b> · 点开看</summary>{combo_html(mk)}</details>
