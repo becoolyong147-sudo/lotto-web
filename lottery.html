@@ -10452,7 +10452,7 @@ function lcCopyFallback(t){
 
 
 // 📊 形态走势:头/二/三奖 × 多个维度(单双/大小/打数/数根/点数/上下半年)+ 综合 —— 实际开了几次 vs 公平应开几次,再配最近30期走向
-var __stPrize=0, __stDim='oe', __stPerm='', __stSeg='4d';   // __stSeg: 4d / f2 / m2 / b2(看整个4D 还是 前/中/后 2D)
+var __stPrize=0, __stDim='oe', __stPerm='', __stSeg='4d', __stPmK=3, __stPmFz=false;   // __stPmK/__stPmFz: 🔁一样的走势 用几期 / 差一个也算   // __stSeg: 4d / f2 / m2 / b2(看整个4D 还是 前/中/后 2D)
 var __stDimDef=null;
 function stDefs(){
   if(__stDimDef) return __stDimDef;
@@ -10689,6 +10689,64 @@ function stRun(){
     var late=o.avg&&o.gap>=o.avg*1.5;
     return '<div style="display:flex;align-items:center;gap:8px;margin:2px 0;font-size:12px'+(isNew?';background:#fff7ed;border-radius:4px':'')+'"><div style="width:'+(tdim==='da'?130:82)+'px;white-space:nowrap;text-align:right'+(isNew?';font-weight:800;color:#c2410c':'')+'">'+(isNew?'👉 ':'')+tLabel(o.l)+'</div><div style="white-space:nowrap">'+cells+'</div><div style="width:170px;color:'+(late?'#dc2626':'#64748b')+'">'+(o.gap===0?'<b style="color:#c2410c">🟧 最新一期开这个('+L30[L30.length-1].num+')</b>':'已 '+o.gap+' 期没开')+'</div></div>'; }).join('');
   h+='<div style="font-size:11px;color:#94a3b8;margin-top:8px">⚠️ 红字=已经比平均间隔晚了很多期(只是「落后」,不代表下一期会补回来;之前的回测显示补回的机会跟随机差不多)。这里只是让你看清走向。</div></div>';
+  // 🔁 以前有没有一样的走势:拿最近 K 期的样子 → 历史里找一样(或差一个)的 → 看下一期开了什么 + 倒回去试准不准
+  (function(){
+    var K=__stPmK, FZ=__stPmFz, sq2=P[__stPrize].seq, L=sq2.map(function(e){ return String(e.lab[tdim]); }), n=L.length;
+    var nm=function(l){ return tdim==='half'?tLabel(l):l; };
+    if(n<K+5) return;
+    var cur=L.slice(n-K);
+    function diff(i){ var d=0; for(var j=0;j<K;j++){ if(L[i-K+1+j]!==cur[j]){ d++; if(d>1) return 9; } } return d; }
+    var hits=[];
+    for(var i=K-1;i<=n-2;i++){ var d=diff(i); if(d===0||(FZ&&d===1)) hits.push({i:i,d:d}); }
+    var base={}; L.forEach(function(l){ base[l]=(base[l]||0)+1; });
+    var tally={}; hits.forEach(function(x){ var l=L[x.i+1]; tally[l]=(tally[l]||0)+1; });
+    // 倒回去试:最近 300 期,每期只用它之前的资料,猜「以前跟着开最多的那种」
+    var bt={n:0,hit:0,exp:0};
+    for(var t=Math.max(K+20,n-300);t<n;t++){
+      var pat=L.slice(t-K,t), cnt={}, bc={}, any=false;
+      for(var j=K-1;j<=t-2;j++){ var d=0; for(var q=0;q<K&&d<2;q++){ if(L[j-K+1+q]!==pat[q]) d++; } if(d===0||(FZ&&d===1)){ var nx=L[j+1]; cnt[nx]=(cnt[nx]||0)+1; any=true; } }
+      if(!any) continue;
+      for(var j2=0;j2<t;j2++){ bc[L[j2]]=(bc[L[j2]]||0)+1; }
+      var g=null,gc=-1; Object.keys(cnt).forEach(function(k){ if(cnt[k]>gc){gc=cnt[k];g=k;} });
+      bt.n++; if(L[t]===g) bt.hit++; bt.exp+=(bc[g]||0)/t;
+    }
+    var BTN=function(cur,v,lbl,js){ return '<button class="btn" style="padding:4px 11px;font-size:12px;margin:0 3px 3px 0;'+(cur===v?'background:#7c3aed;color:#fff;font-weight:800':'')+'" onclick="'+js+';stRun()">'+lbl+'</button>'; };
+    var x='<div style="margin-top:14px;border:2px solid #7c3aed;border-radius:10px;padding:10px">';
+    x+='<div style="font-weight:800;color:#6d28d9;font-size:15px">🔁 以前有没有一样的走势? <span style="font-size:12px;font-weight:400;color:#64748b">('+(tdim==='half'?'上下半年型':D[tdim].title)+')</span></div>';
+    x+='<div style="margin:6px 0">哪个奖: '+PN.map(function(p,i){ return BTN(__stPrize,i,p,'__stPrize='+i); }).join('')+'</div>';
+    x+='<div style="margin:2px 0">样子用几期: '+[2,3,4,5].map(function(k){ return BTN(K,k,k+'期','__stPmK='+k); }).join('')
+      +' &nbsp; 像到: '+BTN(FZ,false,'一模一样','__stPmFz=false')+BTN(FZ,true,'差一个也算','__stPmFz=true')+'</div>';
+    // 现在的走势
+    var cs=sq2.slice(n-K);
+    x+='<div style="margin-top:8px;font-weight:700;color:#334155">━━ 现在的走势('+PN[__stPrize]+')━━</div><div style="display:flex;align-items:flex-end;gap:6px;flex-wrap:wrap;margin:6px 0">';
+    cs.forEach(function(e,j){ x+='<div style="text-align:center"><div style="font-size:11px;color:#64748b">'+e.date.slice(5)+'</div><div style="font-family:monospace;font-size:13px">'+e.num+'</div><div style="background:#ede9fe;color:#5b21b6;font-weight:800;border-radius:6px;padding:3px 8px">'+nm(cur[j])+'</div></div><div style="font-size:18px;color:#a78bfa;padding-bottom:4px">→</div>'; });
+    x+='<div style="text-align:center"><div style="font-size:11px;color:#64748b">下一期</div><div style="font-size:13px">&nbsp;</div><div style="background:#fef3c7;color:#b45309;font-weight:800;border-radius:6px;padding:3px 10px">❓</div></div></div>';
+    // 以前一样的
+    var ex=hits.filter(function(h0){return h0.d===0;}).length;
+    x+='<div style="margin-top:8px;font-weight:700;color:#334155">━━ 以前'+(FZ?'一样或很像':'一模一样')+'的,找到 <span style="color:#7c3aed">'+hits.length+'</span> 次'+(FZ?' <span style="font-weight:400;color:#64748b">(一模一样 '+ex+' 次,差一个 '+(hits.length-ex)+' 次)</span>':'')+' ━━</div>';
+    if(hits.length<5) x+='<div style="color:#b45309;font-size:12px;margin:4px 0">找到的太少,样子太长了 —— 改短一点(例如 2期)或勾「差一个也算」。</div>';
+    var show=hits.slice().reverse().slice(0,30);
+    x+='<div style="max-height:320px;overflow:auto;font-size:13px">'+show.map(function(h0){
+      var w=sq2.slice(h0.i-K+1,h0.i+1), nx=sq2[h0.i+1];
+      return '<div style="padding:3px 0;border-top:1px solid #f1f5f9"><span style="color:#64748b;display:inline-block;width:84px">'+w[0].date+'</span>'
+        +w.map(function(e,j){ var same=String(e.lab[tdim])===cur[j]; return '<span title="'+e.date+' '+e.num+'" style="'+(same?'':'color:#dc2626;text-decoration:underline')+'">'+nm(e.lab[tdim])+'</span>'; }).join(' → ')
+        +' → 下一期 <span style="font-family:monospace">'+nx.num+'</span> <b style="color:#7c3aed">【'+nm(nx.lab[tdim])+'】</b>'+(h0.d?' <span style="color:#dc2626;font-size:11px">(差一个)</span>':'')
+        +' <span style="color:#94a3b8;font-size:11px">'+w.map(function(e){return e.num;}).join(' ')+'</span></div>'; }).join('')+'</div>';
+    if(hits.length>30) x+='<div style="font-size:11px;color:#94a3b8">(只列最新 30 次,其余 '+(hits.length-30)+' 次也算进下面的次数)</div>';
+    // 下一期开了
+    if(hits.length){
+      var N0=hits.length, keys=Object.keys(base).sort(function(a,b){ return (tally[b]||0)-(tally[a]||0); }), mx=1;
+      keys.forEach(function(k){ mx=Math.max(mx,tally[k]||0,N0*base[k]/n); });
+      x+='<div style="margin-top:8px;font-weight:700;color:#334155">━━ 那 '+N0+' 次,下一期开了 ━━</div>';
+      x+=keys.map(function(k){ var o=tally[k]||0, e=N0*base[k]/n; return '<div style="display:flex;align-items:center;gap:6px;font-size:13px;margin:2px 0"><span style="width:70px;text-align:right;font-weight:700">'+nm(k)+'</span><span style="flex:1;max-width:260px;background:#f1f5f9;border-radius:4px;height:14px;position:relative"><i style="position:absolute;left:0;top:0;bottom:0;width:'+(o/mx*100)+'%;background:#a78bfa;border-radius:4px"></i></span><span style="width:150px"><b>'+o+'</b> 次 <span style="color:#64748b">平常约 '+e.toFixed(1)+' 次</span></span></div>'; }).join('');
+    }
+    x+='<div style="margin-top:8px;font-weight:700;color:#334155">━━ 照这个方法以前准不准 ━━</div>';
+    if(bt.n){ var lead=bt.hit-bt.exp, se=Math.sqrt(Math.max(bt.exp,1));
+      x+='<div style="font-size:13px;line-height:1.7">倒回去最近 '+bt.n+' 期,每期都猜「以前跟着开最多的那种」:猜中 <b>'+bt.hit+'</b> 期,随便猜约 <b>'+bt.exp.toFixed(0)+'</b> 期 → <b style="color:'+(lead>2*se?'#16a34a':lead<-2*se?'#dc2626':'#64748b')+'">'+(lead>2*se?'比随便猜好':lead<-2*se?'比随便猜差':'跟随便猜差不多')+'</b></div>'; }
+    else x+='<div style="font-size:13px;color:#94a3b8">资料不够,没办法倒回去试。</div>';
+    x+='</div>';
+    h+=x;
+  })();
   out.innerHTML=h;
 }
 
