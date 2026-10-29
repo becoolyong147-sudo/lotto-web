@@ -668,22 +668,6 @@ function renderPatternTrend(){
 <!-- TAB: 输入新成绩 -->
 
 <div id="tab-add" class="panel">
-<div class="card" style="background:#f0fdf4;border:1px solid #86efac">
-  <h3>🎲 演示数据 — 快速填入测试用假成绩</h3>
-  <div style="font-size:12px;color:#444;margin-bottom:8px">没有真实数据时，先填入演示数据让所有分析功能可以运行。真实数据贴入后可随时清除演示数据。</div>
-  <div class="row">
-    <div class="ig"><label>演示期数（每个市场）</label>
-      <select id="demo-weeks">
-        <option value="12">12 期（约 1 个月）</option>
-        <option value="36" selected>36 期（约 3 个月）</option>
-        <option value="72">72 期（约 6 个月）</option>
-      </select>
-    </div>
-    <button class="btn btn-green" onclick="seedDemoData()" style="padding:9px 18px">🎲 填入演示数据</button>
-    <button class="btn btn-red" onclick="clearDemoData()" style="padding:9px 14px">🗑 清除演示数据</button>
-  </div>
-  <div id="demo-msg" style="margin-top:8px"></div>
-</div>
 <div class="card">
   <h3>输入新一期开奖成绩</h3>
   <div class="row">
