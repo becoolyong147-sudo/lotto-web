@@ -10119,11 +10119,9 @@ function zoQuick2D(){
   h+='• <b>倍数</b>看它反不反常(纯记录,不代表会开)　• <b>头/二/三</b>看它偏哪个奖位　• <b>爱月</b>发群话术("这号X月最爱开")<br>';
   h+='• <b>常配</b>最实用:前2D 看它常配哪个后2D → 直接拼完整4D;中2D 看常配前/后 → 拼前3D/后3D<br>';
   h+='• 选好2D后 → 配1D/另一段2D → box。想省钱先用「撞号/筛选」砍小池子。<b>记住:中率高≠赚,配EV看成本。</b>';
-  h+='<div id="q2d-bt" style="margin-top:12px"></div>';
   h+='</div>';
   h+='</div>';
   out.innerHTML=h;
-  try{ q2dBT(); }catch(e){ console.warn('q2dBT',e); }
   out.scrollIntoView({behavior:'smooth',block:'start'});
 }
 // 🔢 缺席数根链接·回测：逐期用缺席数根补链凑3D(box)，对下期头二三，看是否比随机强
