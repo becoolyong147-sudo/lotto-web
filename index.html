@@ -10452,7 +10452,7 @@ function lcCopyFallback(t){
 
 
 // 📊 形态走势:头/二/三奖 × 多个维度(单双/大小/打数/数根/点数/上下半年)+ 综合 —— 实际开了几次 vs 公平应开几次,再配最近30期走向
-var __stPrize=0, __stDim='oe', __stPerm='';
+var __stPrize=0, __stDim='oe', __stPerm='', __stSeg='4d';   // __stSeg: 4d / f2 / m2 / b2(看整个4D 还是 前/中/后 2D)
 var __stDimDef=null;
 function stDefs(){
   if(__stDimDef) return __stDimDef;
@@ -10471,6 +10471,12 @@ function stDefs(){
     b3:{title:'后3D点数(百十个相加)',order:['0-6','7-10','11-14','15-18','19-22','23-27'],f:function(n){var v=(+n[1])+(+n[2])+(+n[3]);return v<=6?'0-6':v<=10?'7-10':v<=14?'11-14':v<=18?'15-18':v<=22?'19-22':'23-27';}},
     pt:{title:'点数分段(四位相加)',order:['0-8','9-12','13-16','17-20','21-24','25-28','29-36'],f:function(n){var sm=(+n[0])+(+n[1])+(+n[2])+(+n[3]);return sm<=8?'0-8':sm<=12?'9-12':sm<=16?'13-16':sm<=20?'17-20':sm<=24?'21-24':sm<=28?'25-28':'29-36';}}
   };
+  // 前2D / 中2D / 后2D 各自的 单双 · 大小 · 数根(2位相加的数根, 00 = 根0)
+  [['f2','前2D',0],['m2','中2D',1],['b2','后2D',2]].forEach(function(sg){ var a=sg[2];
+    D[sg[0]+'oe']={title:sg[1]+' 单双',order:['双双','双单','单双','单单'],f:function(n){ return (odd(+n[a])?'单':'双')+(odd(+n[a+1])?'单':'双'); }};
+    D[sg[0]+'bs']={title:sg[1]+' 大小(大=5-9)',order:['小小','小大','大小','大大'],f:function(n){ return (big(+n[a])?'大':'小')+(big(+n[a+1])?'大':'小'); }};
+    D[sg[0]+'rt']={title:sg[1]+' 数根(两位相加的数根)',order:['根0','根1','根2','根3','根4','根5','根6','根7','根8','根9'],f:function(n){ var v=(+n[a])+(+n[a+1]); return '根'+(v===0?0:dr(v)); }};
+  });
   Object.keys(D).forEach(function(k){ var d=D[k], c={}; for(var i=0;i<10000;i++){ var l=d.f(('000'+i).slice(-4)); c[l]=(c[l]||0)+1; } d.share={}; d.order.forEach(function(l){ d.share[l]=(c[l]||0)/10000; }); d.key=k; });
   __stDimDef={D:D, view:{oe:['oe16'],bs:['bs16'],da:['da'],rt:['rt'],pt:['pt'],f3:['f3'],b3:['b3']}};
   return __stDimDef;
@@ -10497,6 +10503,8 @@ function stRun(){
   var out=document.getElementById('st-out'); if(!out) return;
   var mk=document.getElementById('st-mk').value, win=parseInt(document.getElementById('st-win').value,10)||0;
   var DEF=stDefs(), D=DEF.D;
+  if(__stSeg!=='4d'){ if(['oe','bs','rt'].indexOf(__stDim)<0) __stDim='oe';
+    var _v={}; Object.keys(DEF.view).forEach(function(k){ _v[k]=DEF.view[k]; }); _v.oe=[__stSeg+'oe']; _v.bs=[__stSeg+'bs']; _v.rt=[__stSeg+'rt']; DEF={D:D,view:_v}; }
   var m=(typeof payAllDraws==='function'?payAllDraws(mk):[]).filter(function(d){return d&&d.date&&d.nums&&d.nums.length>=3;});
   m.sort(function(a,b){return String(a.date)<String(b.date)?-1:1;});
   function pd(v){ return String(v==null?'':v).replace(/\D/g,'').padStart(4,'0'); }
@@ -10536,7 +10544,10 @@ function stRun(){
         +'<div style="width:46px;font-size:11px;color:#0891b2;font-weight:700">'+(it.key===latestKey?'⬅最新':'')+'</div></div>'; }).join('');
   }
   var DIMS=[['oe','单双'],['bs','大小'],['pos','位置'],['fine','细分'],['da','打数'],['rt','数根'],['pt','点数'],['f3','前3D点数'],['b3','后3D点数'],['half','上下半年'],['all','🧩综合']];
-  var h='<div style="margin-bottom:8px">看哪个维度: '+DIMS.map(function(d){ return '<button class="btn" style="padding:5px 12px;font-size:13px;margin:0 3px 3px 0;'+(d[0]===__stDim?'background:#0891b2;color:#fff;font-weight:800':'')+'" onclick="stSetDim(\''+d[0]+'\')">'+d[1]+'</button>'; }).join('')+'</div>';
+  var SEGS=[['4d','整个4D'],['f2','前2D(千百)'],['m2','中2D(百十)'],['b2','后2D(十个)']];
+  if(__stSeg!=='4d') DIMS=DIMS.filter(function(d){ return ['oe','bs','rt'].indexOf(d[0])>=0; });
+  var h='<div style="margin-bottom:6px">看哪一段: '+SEGS.map(function(d){ return '<button class="btn" style="padding:5px 12px;font-size:13px;margin:0 3px 3px 0;'+(d[0]===__stSeg?'background:#b45309;color:#fff;font-weight:800':'')+'" onclick="__stSeg=\''+d[0]+'\';stRun()">'+d[1]+'</button>'; }).join('')+'</div>';
+  h+='<div style="margin-bottom:8px">看哪个维度: '+DIMS.map(function(d){ return '<button class="btn" style="padding:5px 12px;font-size:13px;margin:0 3px 3px 0;'+(d[0]===__stDim?'background:#0891b2;color:#fff;font-weight:800':'')+'" onclick="stSetDim(\''+d[0]+'\')">'+d[1]+'</button>'; }).join('')+'</div>';
   h+='<div style="font-size:12px;color:#64748b;margin-bottom:6px">'+mk+' · '+(cutoff?cutoff+' ~ ':'')+lastDate+' · 共 '+P[0].n+' 期。柱子右边的数=实际开了几次,黑色虚线=公平应开次数。</div>';
   // 一个维度 → 三张(头/二/三)
   function dimCard(k,sets){
