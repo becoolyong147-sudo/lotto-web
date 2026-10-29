@@ -740,6 +740,48 @@ function renderPatternTrend(){
 
 <!-- TAB: 查一个号 -->
 <div id="tab-numlookup" class="panel" style="padding:12px">
+  <div class="card" style="border:2px solid #0891b2">
+    <h3>📅 查每年同一天 / 同一期号的成绩</h3>
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin:6px 0">
+      <div class="ig"><label>查什么</label><select id="dl-mode" onchange="dlMode()"><option value="date">某月某日</option><option value="draw">某期号</option></select></div>
+      <div class="ig" id="dl-date-box"><label>月 / 日</label><span><select id="dl-m"></select> 月 <select id="dl-d"></select> 日</span></div>
+      <div class="ig" id="dl-draw-box" style="display:none"><label>期号(只填前面的数字)</label><input id="dl-no" type="number" min="1" max="999" placeholder="例如 437" style="width:110px"></div>
+      <div class="ig"><label>市场</label><select id="dl-mk"><option value="*">全部 8 家</option><option>万能</option><option>跑马</option><option>多多</option><option>新加坡</option><option>豪龙</option><option>9龙</option><option>沙巴</option><option>砂拉越</option></select></div>
+      <button class="btn btn-primary" onclick="dlRun()">🔍 查</button>
+    </div>
+    <div class="m" style="font-size:12px;color:#64748b">例子:选 10 月 28 日 → 每一年 10 月 28 日开出的头二三都列出来。期号例子:437 → 每一年第 437 期(437/25、437/24 …)。</div>
+    <div id="dl-out" style="margin-top:8px"></div>
+  </div>
+<script>
+(function(){ var m=document.getElementById('dl-m'), d=document.getElementById('dl-d'); if(!m) return; var t=new Date();
+  for(var i=1;i<=12;i++) m.innerHTML+='<option value="'+i+'"'+(i===t.getMonth()+1?' selected':'')+'>'+i+'</option>';
+  for(var j=1;j<=31;j++) d.innerHTML+='<option value="'+j+'"'+(j===t.getDate()?' selected':'')+'>'+j+'</option>'; })();
+function dlMode(){ var v=document.getElementById('dl-mode').value; document.getElementById('dl-date-box').style.display=v==='date'?'':'none'; document.getElementById('dl-draw-box').style.display=v==='draw'?'':'none'; }
+// 📅 每年同一天 / 同一期号:一年一行(日期 星期 期号 头 二 三),多家时按年份排在一起
+function dlRun(){
+  var out=document.getElementById('dl-out'), mode=document.getElementById('dl-mode').value, mkSel=document.getElementById('dl-mk').value;
+  var MK=mkSel==='*'?['万能','跑马','多多','新加坡','豪龙','9龙','沙巴','砂拉越']:[mkSel], WK='日一二三四五六';
+  var mm=('0'+document.getElementById('dl-m').value).slice(-2), dd=('0'+document.getElementById('dl-d').value).slice(-2), no=parseInt(document.getElementById('dl-no').value,10);
+  if(mode==='draw'&&!(no>0)){ out.innerHTML='<div class="warn">请先填期号前面的数字,例如 437。</div>'; return; }
+  var rows=[];
+  MK.forEach(function(mk){ (typeof payAllDraws==='function'?payAllDraws(mk):(DB[mk]||[])).forEach(function(r){ var dt=String(r.date||'').slice(0,10);
+    var ok=mode==='date'?(dt.slice(5)===mm+'-'+dd):(parseInt(String(r.draw||'').split('/')[0],10)===no);
+    if(ok&&r.nums) rows.push({mk:mk,date:dt,draw:r.draw||'',nums:[0,1,2].map(function(k){ var v=r.nums[k]; return v==null||v===''?'----':String(v).padStart(4,'0'); })}); }); });
+  rows.sort(function(a,b){ return b.date.localeCompare(a.date)||MK.indexOf(a.mk)-MK.indexOf(b.mk); });
+  var title=mode==='date'?(+mm)+' 月 '+(+dd)+' 日':'第 '+no+' 期';
+  if(!rows.length){ out.innerHTML='<div class="warn">'+(mkSel==='*'?'8 家':mkSel)+' 历年的'+title+'都没有开奖记录'+(mode==='date'?'(那天不是开奖日)':'')+'。</div>'; return; }
+  var h='<div style="font-weight:800;color:#0e7490;margin-bottom:4px">'+(mkSel==='*'?'8 家':mkSel)+' · 历年'+title+' · 共 '+rows.length+' 期</div>';
+  h+='<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:14px;width:100%"><tr style="background:#ecfeff;color:#0e7490"><th style="text-align:left;padding:4px 6px">日期</th><th>星期</th>'+(MK.length>1?'<th>市场</th>':'')+'<th>期号</th><th>头奖</th><th>二奖</th><th>三奖</th></tr>';
+  var lastY='';
+  rows.forEach(function(r){ var y=r.date.slice(0,4), wd=WK[new Date(r.date+'T00:00:00').getDay()];
+    h+='<tr style="border-top:'+(y!==lastY?'2px solid #94a3b8':'1px solid #e2e8f0')+'"><td style="padding:4px 6px;white-space:nowrap">'+r.date+'</td><td style="text-align:center">'+wd+'</td>'+(MK.length>1?'<td style="text-align:center">'+r.mk+'</td>':'')+'<td style="text-align:center;color:#64748b">'+r.draw+'</td>'
+      +r.nums.map(function(n){ return '<td style="text-align:center;font-family:monospace;font-size:16px;font-weight:700">'+n+'</td>'; }).join('')+'</tr>'; lastY=y; });
+  h+='</table></div>';
+  var all=[]; rows.forEach(function(r){ r.nums.forEach(function(n){ if(/^\d{4}$/.test(n)) all.push(n); }); });
+  h+='<div style="margin-top:6px"><button class="btn" style="padding:3px 10px;font-size:12px" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+all.join('\\n')+'\').then(()=>{this.textContent=\'✅ 已复制\'})">📋 复制这些号码(一行一个,'+all.length+' 个)</button></div>';
+  out.innerHTML=h;
+}
+</script>
   <div class="card">
     <h3>🔍 查一个号 — 一个4D的九市场档案</h3>
     <div class="warn" style="margin:6px 0">输入一个号,一屏看它在9个市场的底细:开过几次、最近哪天、几年没来、打数点数数根、调字整组开过几次。⚠️ 全是历史事实,不预测。</div>
@@ -10452,7 +10494,7 @@ function lcCopyFallback(t){
 
 
 // 📊 形态走势:头/二/三奖 × 多个维度(单双/大小/打数/数根/点数/上下半年)+ 综合 —— 实际开了几次 vs 公平应开几次,再配最近30期走向
-var __stPrize=0, __stDim='oe', __stPerm='', __stSeg='4d', __stPmK=3, __stPmFz=false;   // __stPmK/__stPmFz: 🔁一样的走势 用几期 / 差一个也算   // __stSeg: 4d / f2 / m2 / b2(看整个4D 还是 前/中/后 2D)
+var __stPrize=0, __stDim='oe', __stPerm='', __stSeg='4d', __stPmK=3, __stPmFz=false, __stPmRaw=false;   // __stPmK/__stPmFz: 🔁一样的走势 用几期 / 差一个也算   // __stSeg: 4d / f2 / m2 / b2(看整个4D 还是 前/中/后 2D)
 var __stDimDef=null;
 function stDefs(){
   if(__stDimDef) return __stDimDef;
@@ -10691,7 +10733,10 @@ function stRun(){
   h+='<div style="font-size:11px;color:#94a3b8;margin-top:8px">⚠️ 红字=已经比平均间隔晚了很多期(只是「落后」,不代表下一期会补回来;之前的回测显示补回的机会跟随机差不多)。这里只是让你看清走向。</div></div>';
   // 🔁 以前有没有一样的走势:拿最近 K 期的样子 → 历史里找一样(或差一个)的 → 看下一期开了什么 + 倒回去试准不准
   (function(){
-    var K=__stPmK, FZ=__stPmFz, sq2=P[__stPrize].seq, L=sq2.map(function(e){ return String(e.lab[tdim]); }), n=L.length;
+    var RAW=__stPmRaw&&__stSeg!=='4d', A0={f2:0,m2:1,b2:2}[__stSeg];
+    if(RAW&&__stPmK>3) __stPmK=1;
+    var K=__stPmK, FZ=__stPmFz&&!RAW, sq2=P[__stPrize].seq, L=sq2.map(function(e){ return RAW?e.num.slice(A0,A0+2):String(e.lab[tdim]); }), n=L.length;
+    var labOf=function(e){ return RAW?e.num.slice(A0,A0+2):String(e.lab[tdim]); };
     var nm=function(l){ return tdim==='half'?tLabel(l):l; };
     if(n<K+5) return;
     var cur=L.slice(n-K);
@@ -10714,8 +10759,9 @@ function stRun(){
     var x='<div style="margin-top:14px;border:2px solid #7c3aed;border-radius:10px;padding:10px">';
     x+='<div style="font-weight:800;color:#6d28d9;font-size:15px">🔁 以前有没有一样的走势? <span style="font-size:12px;font-weight:400;color:#64748b">('+(tdim==='half'?'上下半年型':D[tdim].title)+')</span></div>';
     x+='<div style="margin:6px 0">哪个奖: '+PN.map(function(p,i){ return BTN(__stPrize,i,p,'__stPrize='+i); }).join('')+'</div>';
-    x+='<div style="margin:2px 0">样子用几期: '+[2,3,4,5].map(function(k){ return BTN(K,k,k+'期','__stPmK='+k); }).join('')
-      +' &nbsp; 像到: '+BTN(FZ,false,'一模一样','__stPmFz=false')+BTN(FZ,true,'差一个也算','__stPmFz=true')+'</div>';
+    if(__stSeg!=='4d') x+='<div style="margin:2px 0">比什么: '+BTN(RAW,false,'比样子('+(D[tdim]?D[tdim].title.replace(/^.*2D /,''):'')+')','__stPmRaw=false;__stPmK=3')+BTN(RAW,true,'比 2D 号码本身(例如 82)','__stPmRaw=true;__stPmK=1')+'</div>';
+    x+='<div style="margin:2px 0">样子用几期: '+(RAW?[1,2,3]:[2,3,4,5]).map(function(k){ return BTN(K,k,k+'期','__stPmK='+k); }).join('')
+      +(RAW?' <span style="font-size:11px;color:#64748b">(2D 有 100 种,1 期就够找)</span>':' &nbsp; 像到: '+BTN(FZ,false,'一模一样','__stPmFz=false')+BTN(FZ,true,'差一个也算','__stPmFz=true'))+'</div>';
     // 现在的走势
     var cs=sq2.slice(n-K);
     x+='<div style="margin-top:8px;font-weight:700;color:#334155">━━ 现在的走势('+PN[__stPrize]+')━━</div><div style="display:flex;align-items:flex-end;gap:6px;flex-wrap:wrap;margin:6px 0">';
@@ -10729,20 +10775,23 @@ function stRun(){
     x+='<div style="max-height:320px;overflow:auto;font-size:13px">'+show.map(function(h0){
       var w=sq2.slice(h0.i-K+1,h0.i+1), nx=sq2[h0.i+1];
       return '<div style="padding:3px 0;border-top:1px solid #f1f5f9"><span style="color:#64748b;display:inline-block;width:84px">'+w[0].date+'</span>'
-        +w.map(function(e,j){ var same=String(e.lab[tdim])===cur[j]; return '<span title="'+e.date+' '+e.num+'" style="'+(same?'':'color:#dc2626;text-decoration:underline')+'">'+nm(e.lab[tdim])+'</span>'; }).join(' → ')
-        +' → 下一期 <span style="font-family:monospace">'+nx.num+'</span> <b style="color:#7c3aed">【'+nm(nx.lab[tdim])+'】</b>'+(h0.d?' <span style="color:#dc2626;font-size:11px">(差一个)</span>':'')
+        +w.map(function(e,j){ var same=labOf(e)===cur[j]; return '<span title="'+e.date+' '+e.num+'" style="'+(same?'':'color:#dc2626;text-decoration:underline')+'">'+nm(labOf(e))+'</span>'; }).join(' → ')
+        +' → 下一期 <span style="font-family:monospace">'+nx.num+'</span> <b style="color:#7c3aed">【'+nm(labOf(nx))+'】</b>'+(h0.d?' <span style="color:#dc2626;font-size:11px">(差一个)</span>':'')
         +' <span style="color:#94a3b8;font-size:11px">'+w.map(function(e){return e.num;}).join(' ')+'</span></div>'; }).join('')+'</div>';
     if(hits.length>30) x+='<div style="font-size:11px;color:#94a3b8">(只列最新 30 次,其余 '+(hits.length-30)+' 次也算进下面的次数)</div>';
     // 下一期开了
     if(hits.length){
-      var N0=hits.length, keys=Object.keys(base).sort(function(a,b){ return (tally[b]||0)-(tally[a]||0); }), mx=1;
+      var N0=hits.length, keys=Object.keys(base).sort(function(a,b){ return (tally[b]||0)-(tally[a]||0)||(base[b]-base[a]); }), mx=1;
+      if(RAW) keys=keys.slice(0,12);
       keys.forEach(function(k){ mx=Math.max(mx,tally[k]||0,N0*base[k]/n); });
       x+='<div style="margin-top:8px;font-weight:700;color:#334155">━━ 那 '+N0+' 次,下一期开了 ━━</div>';
-      x+=keys.map(function(k){ var o=tally[k]||0, e=N0*base[k]/n; return '<div style="display:flex;align-items:center;gap:6px;font-size:13px;margin:2px 0"><span style="width:70px;text-align:right;font-weight:700">'+nm(k)+'</span><span style="flex:1;max-width:260px;background:#f1f5f9;border-radius:4px;height:14px;position:relative"><i style="position:absolute;left:0;top:0;bottom:0;width:'+(o/mx*100)+'%;background:#a78bfa;border-radius:4px"></i></span><span style="width:150px"><b>'+o+'</b> 次 <span style="color:#64748b">平常约 '+e.toFixed(1)+' 次</span></span></div>'; }).join('');
+      x+=keys.map(function(k){ var o=tally[k]||0, e=N0*base[k]/n; return '<div style="display:flex;align-items:center;gap:6px;font-size:13px;margin:2px 0"><span style="width:70px;text-align:right;font-weight:700">'+nm(k)+'</span><span style="flex:1;max-width:260px;background:#f1f5f9;border-radius:4px;height:14px;position:relative"><i style="position:absolute;left:0;top:0;bottom:0;width:'+(o/mx*100)+'%;background:#a78bfa;border-radius:4px"></i></span><span style="width:250px"><b>'+o+'</b> 次 · 机率 <b style="color:#7c3aed">'+Math.round(o/N0*100)+'%</b> <span style="color:#64748b">(平常 '+Math.round(base[k]/n*100)+'%)</span></span></div>'; }).join('');
+      if(RAW) x+='<div style="font-size:11px;color:#94a3b8">(只列开最多的 12 个 2D)</div>';
+      var tk=keys[0]; x+='<div style="margin-top:6px;background:#f5f3ff;border-radius:8px;padding:6px 10px;font-size:14px">👉 照以前的走势,下一期最常跟着开 <b>【'+nm(tk)+'】</b>:'+(tally[tk]||0)+'/'+N0+' 次,成功机率约 <b style="color:#7c3aed">'+Math.round((tally[tk]||0)/N0*100)+'%</b>(平常就有 '+Math.round(base[tk]/n*100)+'%)</div>';
     }
     x+='<div style="margin-top:8px;font-weight:700;color:#334155">━━ 照这个方法以前准不准 ━━</div>';
     if(bt.n){ var lead=bt.hit-bt.exp, se=Math.sqrt(Math.max(bt.exp,1));
-      x+='<div style="font-size:13px;line-height:1.7">倒回去最近 '+bt.n+' 期,每期都猜「以前跟着开最多的那种」:猜中 <b>'+bt.hit+'</b> 期,随便猜约 <b>'+bt.exp.toFixed(0)+'</b> 期 → <b style="color:'+(lead>2*se?'#16a34a':lead<-2*se?'#dc2626':'#64748b')+'">'+(lead>2*se?'比随便猜好':lead<-2*se?'比随便猜差':'跟随便猜差不多')+'</b></div>'; }
+      x+='<div style="font-size:13px;line-height:1.7">倒回去最近 '+bt.n+' 期,每期都猜「以前跟着开最多的那种」:猜中 <b>'+bt.hit+'</b> 期(成功机率 <b>'+Math.round(bt.hit/bt.n*100)+'%</b>),随便猜约 <b>'+bt.exp.toFixed(0)+'</b> 期('+Math.round(bt.exp/bt.n*100)+'%) → <b style="color:'+(lead>2*se?'#16a34a':lead<-2*se?'#dc2626':'#64748b')+'">'+(lead>2*se?'比随便猜好':lead<-2*se?'比随便猜差':'跟随便猜差不多')+'</b></div>'; }
     else x+='<div style="font-size:13px;color:#94a3b8">资料不够,没办法倒回去试。</div>';
     x+='</div>';
     h+=x;
