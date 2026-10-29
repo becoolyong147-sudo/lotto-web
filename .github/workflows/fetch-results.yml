@@ -50,16 +50,12 @@ jobs:
       - name: Backfill special prizes (下一期主打靠它算; 补不到不报错)
         run: python auto_fetch_results.py --sp-only --retries 2 --retry-wait 60 || true
 
-      - name: Daily report (手机看 report.html; 只有成绩有变才重算)
-        run: |
-          if ! git diff --quiet auto_results.json || [ ! -f report.html ]; then pip install numpy >/dev/null; python make_report.py || true; fi
 
       - name: Commit & push if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add auto_results.json
-          git add report.html report_*.html picks.html 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No changes."
           else

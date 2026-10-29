@@ -254,9 +254,7 @@ tr:hover td{background:#fafaf5}
 <div id="scene-decision" class="scene-panel active">
   <div class="subtabs">
     <div class="subtab active" data-tab="overview" onclick="switchSubtab(this)">🎯 一键总览</div>
-    <div class="subtab" data-tab="dailyrep" onclick="switchSubtab(this);drLoad()" style="background:#fee2e2;border-color:#dc2626;font-weight:800">📰 每日报告</div>
     <div class="subtab" data-tab="shapetrend" onclick="switchSubtab(this);stRun()" style="background:#ecfeff;border-color:#0891b2;font-weight:800">📊 形态走势</div>
-    <div class="subtab" data-tab="myplay" onclick="switchSubtab(this)" style="background:#fef3c7;border-color:#f59e0b;font-weight:800">🎲 我的玩法</div>
     <div class="subtab" data-tab="numlookup" onclick="switchSubtab(this)">🔍 查一个号</div>
     <div class="subtab" data-tab="filter" onclick="switchSubtab(this)">🧰 条件筛选</div>
     <div class="subtab" data-tab="betlog" onclick="switchSubtab(this);blInit()" style="background:#e0f2fe;border-color:#0ea5e9;font-weight:800">📒 下注记录</div>
@@ -756,99 +754,6 @@ function renderPatternTrend(){
   </div>
 </div>
 
-<div id="tab-myplay" class="panel" style="padding:12px">
-  <div class="card" style="border:3px solid #16a34a">
-    <h3 style="color:#15803d">🎯 我的功课 · 本期缺席推荐的2D + 条件 → 留下的号码</h3>
-    <div style="font-size:14px;color:#475569;line-height:1.8;margin-bottom:8px">用<b>本期头二三</b>算出缺席(数根+数字),推荐<b>前2D / 中2D / 后2D</b>;再叠上你的条件(前3D点数、后3D点数、单双),<b>留下来的号码就是下一期的功课</b>。下面还有逐期回测:每一期当时留下什么、开了什么、中没中。</div>
-    <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
-      <div><label style="font-size:12px;font-weight:700;display:block">市场</label><select id="hw-mk" style="font-size:15px;padding:5px 9px"><option>万能</option><option>跑马</option><option>多多</option><option>新加坡</option><option>豪龙</option><option>沙巴</option><option>9龙</option><option>砂拉越</option></select></div>
-      <div><label style="font-size:12px;font-weight:700;display:block">数根看最近几期</label><select id="hw-win" style="font-size:15px;padding:5px 9px"><option value="1">1期(只看本期)</option><option value="2" selected>2期</option><option value="3">3期</option></select></div>
-      <div><label style="font-size:12px;font-weight:700;display:block">用哪几段2D</label>
-        <label style="margin-right:8px"><input type="checkbox" id="hw-f" checked> 前2D</label><label style="margin-right:8px"><input type="checkbox" id="hw-m" checked> 中2D</label><label><input type="checkbox" id="hw-b" checked> 后2D</label></div>
-      <div><label style="font-size:12px;font-weight:700;display:block">号码至少中几段</label><select id="hw-seg" style="font-size:15px;padding:5px 9px"><option value="1" selected>1段(任一段)</option><option value="2">2段(同时中两段)</option><option value="3">3段(全中)</option></select></div>
-    </div>
-    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:10px;font-size:14px;padding:6px 8px;background:#fefce8;border-radius:8px">
-      <span style="font-weight:800;color:#a16207">选号方法</span>
-      <select id="hw-method" style="font-size:15px;padding:5px 9px"><option value="seg">缺席推荐前/中/后2D(原来的)</option><option value="zg">主杆法(上期前2D数根 + 单双走势)</option></select>
-      <label style="font-size:14px;color:#92400e;font-weight:700" title="只留下「历史上偏爱下一期所在那半年」的前/中/后2D(只对「缺席推荐」方法有效)"><input type="checkbox" id="hw-star"> ⭐ 只用应季的2D</label>
-      <span style="font-size:13px;color:#475569">主杆法:看最近 <input id="hw-zg-k" value="3" size="2" style="padding:2px 4px"> 期的前2D形态 · 去掉最近 <input id="hw-zg-ex" value="1" size="2" style="padding:2px 4px"> 期开过的前2D</span>
-    </div>
-    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:14px">
-      <label><input type="checkbox" id="hw-p3f" checked> 前3D点数 <input id="hw-p3f-a" value="10" size="2" style="padding:2px 4px">–<input id="hw-p3f-b" value="18" size="2" style="padding:2px 4px"></label>
-      <label><input type="checkbox" id="hw-p3b" checked> 后3D点数 <input id="hw-p3b-a" value="10" size="2" style="padding:2px 4px">–<input id="hw-p3b-b" value="18" size="2" style="padding:2px 4px"></label>
-      <span>单双:
-        <label><input type="checkbox" class="hw-oe" value="4"> 4单</label>
-        <label><input type="checkbox" class="hw-oe" value="3" checked> 3单1双</label>
-        <label><input type="checkbox" class="hw-oe" value="2" checked> 2单2双</label>
-        <label><input type="checkbox" class="hw-oe" value="1" checked> 1单3双</label>
-        <label><input type="checkbox" class="hw-oe" value="0"> 4双</label></span>
-      <span>回测<select id="hw-n" style="font-size:14px;padding:3px 6px"><option value="15">15期</option><option value="30" selected>30期</option><option value="60">60期</option><option value="100">100期</option></select></span>
-      <label title="拆3D那一块是否也套用上面的点数/单双/打数等条件" style="font-size:13px"><input type="checkbox" id="hw-link-cond"> 拆3D也套用条件</label> <button class="btn btn-green" style="font-size:16px;font-weight:800;padding:10px 22px" onclick="zoHomework()">🎯 生成功课</button>
-    </div>
-    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:14px;padding-top:8px;border-top:1px dashed #bbf7d0">
-      <span>打数:
-        <label><input type="checkbox" class="hw-da" value="24" checked> 24打</label>
-        <label><input type="checkbox" class="hw-da" value="12" checked> 12打</label>
-        <label><input type="checkbox" class="hw-da" value="6" checked> 6打</label>
-        <label><input type="checkbox" class="hw-da" value="4" checked> 4打</label>
-        <label><input type="checkbox" class="hw-da" value="1" checked> 1打</label></span>
-      <span>冷热档(跟高级筛选一样):
-        <label><input type="checkbox" class="hw-hot" value="hot" checked> 🔥 热门</label>
-        <label><input type="checkbox" class="hw-hot" value="mid" checked> 🔵 中性</label>
-        <label><input type="checkbox" class="hw-hot" value="cold" checked> ❄️ 冷门</label>
-        <a href="javascript:void(0)" onclick="document.querySelectorAll('.hw-hot').forEach(function(e){e.checked=true;})" style="font-size:12px">全选</a>
-        <a href="javascript:void(0)" onclick="document.querySelectorAll('.hw-hot').forEach(function(e){e.checked=false;})" style="font-size:12px">清除</a>
-        <span style="font-size:11px;color:#64748b">热门=比平均间隔早出现(≤0.5倍);冷门=已久未出现(≥1.5倍)</span></span>
-    </div>
-    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:14px">
-      <label><input type="checkbox" id="hw-yr"> 号码在 <select id="hw-y1" style="font-size:13px;padding:2px 5px"><option value="0" selected>最早</option><option value="1995">1995</option><option value="1996">1996</option><option value="1997">1997</option><option value="1998">1998</option><option value="1999">1999</option><option value="2000">2000</option><option value="2001">2001</option><option value="2002">2002</option><option value="2003">2003</option><option value="2004">2004</option><option value="2005">2005</option><option value="2006">2006</option><option value="2007">2007</option><option value="2008">2008</option><option value="2009">2009</option><option value="2010">2010</option><option value="2011">2011</option><option value="2012">2012</option><option value="2013">2013</option><option value="2014">2014</option><option value="2015">2015</option><option value="2016">2016</option><option value="2017">2017</option><option value="2018">2018</option><option value="2019">2019</option><option value="2020">2020</option><option value="2021">2021</option><option value="2022">2022</option><option value="2023">2023</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select> 到 <select id="hw-y2" style="font-size:13px;padding:2px 5px"><option value="9999" selected>最新</option><option value="1995">1995</option><option value="1996">1996</option><option value="1997">1997</option><option value="1998">1998</option><option value="1999">1999</option><option value="2000">2000</option><option value="2001">2001</option><option value="2002">2002</option><option value="2003">2003</option><option value="2004">2004</option><option value="2005">2005</option><option value="2006">2006</option><option value="2007">2007</option><option value="2008">2008</option><option value="2009">2009</option><option value="2010">2010</option><option value="2011">2011</option><option value="2012">2012</option><option value="2013">2013</option><option value="2014">2014</option><option value="2015">2015</option><option value="2016">2016</option><option value="2017">2017</option><option value="2018">2018</option><option value="2019">2019</option><option value="2020">2020</option><option value="2021">2021</option><option value="2022">2022</option><option value="2023">2023</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select> 年之间开过</label>
-      <label><input type="checkbox" id="hw-ex"> 排除最近 <input id="hw-ex-m" value="3" size="2" style="padding:2px 4px"> 个月内开过的号码</label>
-      <span>半年型:
-        <label><input type="checkbox" class="hw-half" value="h1" checked> 偏上半年</label>
-        <label><input type="checkbox" class="hw-half" value="h2" checked> 偏下半年</label>
-        <label><input type="checkbox" class="hw-half" value="bal" checked> 均衡</label>
-        <label><input type="checkbox" class="hw-half" value="new" checked> 分身组没开过</label></span>
-    </div>
-    <div id="hw-out" style="margin-top:10px"></div>
-  </div>
-
-  <div class="card" style="border:2px solid #0f766e;margin-top:12px">
-    <h3 style="color:#0f766e">🗺️ 大蓝图 · 0000 到 9999 全部号码</h3>
-    <div style="margin-bottom:6px"><label style="font-size:13px;color:#0f766e;font-weight:700;margin-right:6px">市场</label><select id="bp-market" onchange="zoBlueprint()" style="font-size:15px;padding:5px 9px"><option>万能</option><option>跑马</option><option>多多</option><option>新加坡</option><option>豪龙</option><option>沙巴</option><option>9龙</option><option>砂拉越</option></select></div>
-    <div style="font-size:14px;color:#475569;line-height:1.8;margin-bottom:8px">10000 个号码按顺序排好,一格一个号,每行 100 个(第一行 0000–0099,第二行 0100–0199 …)。用颜色告诉你每个号的情况。<b>鼠标放在格子上</b>可以看号码和详情。</div>
-    <div style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap">
-      <div><label style="font-size:13px;color:#0f766e;font-weight:700;display:block">怎么排</label>
-        <select id="bp-layout" onchange="zoBlueprint()" style="font-size:15px;padding:6px 8px">
-          <option value="seq">顺序排(一行100个,0000→9999)</option>
-          <option value="blk" selected>按前2D分块(每块10×10 = 同一个前2D的100个号)</option>
-        </select></div>
-      <div><label style="font-size:13px;color:#0f766e;font-weight:700;display:block">从哪一年</label>
-        <select id="bp-y1" onchange="zoBlueprint()" style="font-size:15px;padding:6px 8px"><option value="0">最早</option><option value="1995">1995</option><option value="1996">1996</option><option value="1997">1997</option><option value="1998">1998</option><option value="1999">1999</option><option value="2000">2000</option><option value="2001">2001</option><option value="2002">2002</option><option value="2003">2003</option><option value="2004">2004</option><option value="2005">2005</option><option value="2006">2006</option><option value="2007">2007</option><option value="2008">2008</option><option value="2009">2009</option><option value="2010">2010</option><option value="2011">2011</option><option value="2012">2012</option><option value="2013">2013</option><option value="2014">2014</option><option value="2015">2015</option><option value="2016">2016</option><option value="2017">2017</option><option value="2018">2018</option><option value="2019">2019</option><option value="2020">2020</option><option value="2021">2021</option><option value="2022">2022</option><option value="2023">2023</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
-      <div><label style="font-size:13px;color:#0f766e;font-weight:700;display:block">到哪一年</label>
-        <select id="bp-y2" onchange="zoBlueprint()" style="font-size:15px;padding:6px 8px"><option value="9999">最新</option><option value="1995">1995</option><option value="1996">1996</option><option value="1997">1997</option><option value="1998">1998</option><option value="1999">1999</option><option value="2000">2000</option><option value="2001">2001</option><option value="2002">2002</option><option value="2003">2003</option><option value="2004">2004</option><option value="2005">2005</option><option value="2006">2006</option><option value="2007">2007</option><option value="2008">2008</option><option value="2009">2009</option><option value="2010">2010</option><option value="2011">2011</option><option value="2012">2012</option><option value="2013">2013</option><option value="2014">2014</option><option value="2015">2015</option><option value="2016">2016</option><option value="2017">2017</option><option value="2018">2018</option><option value="2019">2019</option><option value="2020">2020</option><option value="2021">2021</option><option value="2022">2022</option><option value="2023">2023</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
-      <div><label style="font-size:13px;color:#0f766e;font-weight:700;display:block">颜色表示什么</label>
-        <select id="bp-mode" onchange="zoBlueprint()" style="font-size:15px;padding:6px 8px">
-          <option value="cnt">开过几次(越深越多,空白=从没开过)</option>
-          <option value="gap">隔了多久没开(红=刚开,灰=很久)</option>
-        </select></div>
-      <div><label style="font-size:13px;color:#0f766e;font-weight:700;display:block">亮出「我要买的号」</label>
-        <select id="bp-mine" onchange="zoBlueprint()" style="font-size:15px;padding:6px 8px">
-          <option value="none">不亮</option>
-          <option value="hw">我的功课号码(🎯生成功课)</option>
-          <option value="lh">十八罗汉(选下面的罗汉)</option>
-        </select></div>
-      <div><label style="font-size:13px;color:#0f766e;font-weight:700;display:block">选哪个罗汉</label>
-        <select id="bp-lh" onchange="zoBlueprint()" style="font-size:15px;padding:6px 8px"><option value="-1">不选(不标罗汉)</option><option value="0">全部18个罗汉</option><option value="1">第1罗汉 · 147/047/247</option><option value="2">第2罗汉 · 137/157</option><option value="3">第3罗汉 · 148/146</option><option value="4">第4罗汉 · 258/158/358</option><option value="5">第5罗汉 · 248/268</option><option value="6">第6罗汉 · 259/279</option><option value="7">第7罗汉 · 269/369/469</option><option value="8">第8罗汉 · 359/379</option><option value="9">第9罗汉 · 368/360</option><option value="10">第10罗汉 · 123/023/223</option><option value="11">第11罗汉 · 113/133</option><option value="12">第12罗汉 · 124/122</option><option value="13">第13罗汉 · 456/356/556</option><option value="14">第14罗汉 · 446/466</option><option value="15">第15罗汉 · 457/455</option><option value="16">第16罗汉 · 789/689/889</option><option value="17">第17罗汉 · 799/779</option><option value="18">第18罗汉 · 780/788</option></select></div>
-      <div><label style="font-size:13px;color:#0f766e;font-weight:700;display:block">最近开的号用红框标出</label>
-        <select id="bp-recent" onchange="zoBlueprint()" style="font-size:15px;padding:6px 8px"><option value="0">不标</option><option value="1" selected>最近1期</option><option value="5">最近5期</option><option value="10">最近10期</option><option value="30">最近30期</option></select></div>
-      <div><label style="font-size:13px;color:#0f766e;font-weight:700;display:block">格子大小</label>
-        <select id="bp-size" onchange="zoBlueprint()" style="font-size:15px;padding:6px 8px"><option value="6">小</option><option value="9" selected>中</option><option value="13">大</option></select></div>
-      <button class="btn" style="background:#0f766e;color:#fff;font-size:17px;font-weight:800;padding:11px 24px" onclick="zoBlueprint()">🗺️ 画蓝图</button>
-    </div>
-    <div id="bp-out" style="margin-top:10px"></div>
-  </div>
-</div>
-
 <!-- TAB: 查一个号 -->
 <div id="tab-numlookup" class="panel" style="padding:12px">
   <div class="card">
@@ -897,17 +802,6 @@ function renderPatternTrend(){
 </div>
 
 <!-- TAB: 号码对比（贴几组号 → 重复/没重复 → 点数×打数分组 → 复制发WhatsApp） -->
-<!-- TAB: 每日报告(report.html,每天/每次开奖后自动生成) -->
-<div id="tab-dailyrep" class="panel" style="padding:8px">
-  <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap"><b style="color:#dc2626">📰 每日报告</b>
-    <button class="btn" style="padding:3px 10px;font-size:12px" onclick="drLoad(true)">🔄 重新载入</button>
-    <a href="report.html" target="_blank" style="font-size:12px">↗ 单独打开</a><span id="dr-st" style="font-size:12px;color:#64748b"></span></div>
-  <iframe id="dr-frame" style="width:100%;height:80vh;border:1px solid #e2e8f0;border-radius:8px;background:#fff"></iframe>
-</div>
-<script>
-// 📰 每日报告: 载入同目录 report.html(手机网址 / 本机都一样);加时间戳避免看到旧的
-function drLoad(force){ var f=document.getElementById('dr-frame'); if(!f) return; if(f.src&&!force) return; f.src='report.html?t='+Date.now(); var st=document.getElementById('dr-st'); if(st) st.textContent='载入中…'; f.onload=function(){ try{ var t=f.contentDocument.title||''; st.textContent=t?('✅ '+t):'⚠️ 还没有报告'; }catch(e){ st.textContent=''; } }; }
-</script>
 <div id="tab-betlog" class="panel" style="padding:12px">
   <div class="card" style="border:3px solid #0ea5e9">
     <h3 style="color:#0369a1">📒 我的下注记录 — 每期记下你真正买的号,开奖后自动对账</h3>
