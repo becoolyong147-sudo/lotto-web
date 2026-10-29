@@ -8482,10 +8482,6 @@ function doBacktest(){
         <button class="btn" style="background:#e2e8f0;color:#475569;padding:6px 12px;font-size:13px" onclick="var e=document.getElementById('abs-adv');var open=(e.style.display==='none'||!e.style.display);e.style.display=open?'flex':'none';this.textContent=(open?'▴ 收起造号进阶':'🧩 造号进阶（组合生成器 / 链接 / 回测…）')">🧩 造号进阶（组合生成器 / 链接 / 回测…）</button>
       </div>
       <div id="abs-adv" style="display:none;flex-wrap:wrap;gap:6px;margin-top:4px;padding-top:8px;border-top:1px dashed #e2e8f0">
-        <button class="btn" style="background:#0d9488;color:#fff;padding:7px 12px;font-size:12px" onclick="zoComboGenShow()">🧩 组合生成器</button>
-        <button class="btn" style="background:#0891b2;color:#fff;padding:7px 12px;font-size:12px" onclick="zoLinkShow()">🔗 链接号码</button>
-        <button class="btn" style="background:#b45309;color:#fff;padding:7px 12px;font-size:12px" onclick="zoAbsentPeriodReport()">📅 缺席2D逐期命中账</button>
-        <button class="btn" style="background:#1e40af;color:#fff;padding:7px 12px;font-size:12px" onclick="zoAbsentZoneFusion()">🗺️ 缺席2D×分区地图→4D</button>
         <button class="btn" style="background:#0d9488;color:#fff;padding:7px 12px;font-size:12px" onclick="zoAbsentZoneReview()">📋 融合逐期清单(看推荐号)</button>
       </div>
     </div>
@@ -9964,9 +9960,7 @@ function zoAbsentPerPeriod(){
     for(var p=0;p<4;p++){ var ds=Object.keys(inter[p]).sort(); h+='<div style="display:flex;align-items:center;gap:6px;margin:3px 0"><span style="width:24px;font-weight:700;color:#0e7490">'+PN[p]+'</span>'+(ds.length?ds.map(function(d){return chip(d,'#0891b2');}).join(''):'<span style="color:#cbd5e1;font-size:12px">无交集</span>')+'</div>'; }
     h+='<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">';
     h+='<button class="btn" style="padding:4px 12px;font-size:12px;background:#0e7490;color:#fff" onclick="zoSendPosSetsToFilter(\''+posStr+'\',\''+mk+'\')">📤 送去条件筛选</button>';
-    h+='<button class="btn" style="padding:4px 12px;font-size:12px;background:#9333ea;color:#fff" onclick="zoInterCheckHistory(\''+posStr+'\',\''+mk+'\')">🔍 回查历史命中</button>';
     h+='</div>';
-    h+='<div id="inter-check-out" style="margin-top:6px"></div>';
     h+='</div>';
   })();
   h+='<div class="ot"><table style="width:100%;font-size:12px;border-collapse:collapse;min-width:820px"><tr style="background:#f0fdfa;color:#0f766e"><th style="text-align:left;padding:4px 8px">日期</th><th style="text-align:left;padding:4px 8px">特别奖(来源)</th>';
