@@ -746,6 +746,7 @@ function renderPatternTrend(){
       <div class="ig"><label>查什么</label><select id="dl-mode" onchange="dlMode()"><option value="date">某月某日</option><option value="draw">某期号</option></select></div>
       <div class="ig" id="dl-date-box"><label>月 / 日</label><span><select id="dl-m"></select> 月 <select id="dl-d"></select> 日</span></div>
       <div class="ig" id="dl-draw-box" style="display:none"><label>期号(只填前面的数字)</label><input id="dl-no" type="number" min="1" max="999" placeholder="例如 437" style="width:110px"></div>
+      <div class="ig"><label>连前后几期一起看</label><select id="dl-ar"><option value="0">只看那一期</option><option value="1" selected>前后各 1 期</option><option value="2">前后各 2 期</option><option value="3">前后各 3 期</option></select></div>
       <div class="ig"><label>市场</label><select id="dl-mk"><option value="*">全部 8 家</option><option>万能</option><option>跑马</option><option>多多</option><option>新加坡</option><option>豪龙</option><option>9龙</option><option>沙巴</option><option>砂拉越</option></select></div>
       <button class="btn btn-primary" onclick="dlRun()">🔍 查</button>
     </div>
@@ -763,21 +764,32 @@ function dlRun(){
   var MK=mkSel==='*'?['万能','跑马','多多','新加坡','豪龙','9龙','沙巴','砂拉越']:[mkSel], WK='日一二三四五六';
   var mm=('0'+document.getElementById('dl-m').value).slice(-2), dd=('0'+document.getElementById('dl-d').value).slice(-2), no=parseInt(document.getElementById('dl-no').value,10);
   if(mode==='draw'&&!(no>0)){ out.innerHTML='<div class="warn">请先填期号前面的数字,例如 437。</div>'; return; }
-  var rows=[];
-  MK.forEach(function(mk){ (typeof payAllDraws==='function'?payAllDraws(mk):(DB[mk]||[])).forEach(function(r){ var dt=String(r.date||'').slice(0,10);
-    var ok=mode==='date'?(dt.slice(5)===mm+'-'+dd):(parseInt(String(r.draw||'').split('/')[0],10)===no);
-    if(ok&&r.nums) rows.push({mk:mk,date:dt,draw:r.draw||'',nums:[0,1,2].map(function(k){ var v=r.nums[k]; return v==null||v===''?'----':String(v).padStart(4,'0'); })}); }); });
+  var AR=parseInt((document.getElementById('dl-ar')||{value:'0'}).value,10)||0;
+  var rows=[], fmt=function(mk,r){ return {mk:mk,date:String(r.date).slice(0,10),draw:r.draw||'',nums:[0,1,2].map(function(k){ var v=r.nums&&r.nums[k]; return v==null||v===''?'----':String(v).padStart(4,'0'); })}; };
+  MK.forEach(function(mk){ var L=(typeof payAllDraws==='function'?payAllDraws(mk):(DB[mk]||[])).filter(function(r){ return r&&r.date&&r.nums; }).slice().sort(function(a,b){ return String(a.date).localeCompare(String(b.date)); });
+    L.forEach(function(r,i){ var dt=String(r.date||'').slice(0,10);
+      var ok=mode==='date'?(dt.slice(5)===mm+'-'+dd):(parseInt(String(r.draw||'').split('/')[0],10)===no);
+      if(!ok) return; var o=fmt(mk,r); o.around=[];
+      for(var k=-AR;k<=AR;k++){ var q=L[i+k]; if(k!==0&&q) o.around.push({k:k,r:fmt(mk,q)}); }
+      rows.push(o); }); });
   rows.sort(function(a,b){ return b.date.localeCompare(a.date)||MK.indexOf(a.mk)-MK.indexOf(b.mk); });
   var title=mode==='date'?(+mm)+' 月 '+(+dd)+' 日':'第 '+no+' 期';
   if(!rows.length){ out.innerHTML='<div class="warn">'+(mkSel==='*'?'8 家':mkSel)+' 历年的'+title+'都没有开奖记录'+(mode==='date'?'(那天不是开奖日)':'')+'。</div>'; return; }
   var h='<div style="font-weight:800;color:#0e7490;margin-bottom:4px">'+(mkSel==='*'?'8 家':mkSel)+' · 历年'+title+' · 共 '+rows.length+' 期</div>';
   h+='<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:14px;width:100%"><tr style="background:#ecfeff;color:#0e7490"><th style="text-align:left;padding:4px 6px">日期</th><th>星期</th>'+(MK.length>1?'<th>市场</th>':'')+'<th>期号</th><th>头奖</th><th>二奖</th><th>三奖</th></tr>';
   var lastY='';
-  rows.forEach(function(r){ var y=r.date.slice(0,4), wd=WK[new Date(r.date+'T00:00:00').getDay()];
-    h+='<tr style="border-top:'+(y!==lastY?'2px solid #94a3b8':'1px solid #e2e8f0')+'"><td style="padding:4px 6px;white-space:nowrap">'+r.date+'</td><td style="text-align:center">'+wd+'</td>'+(MK.length>1?'<td style="text-align:center">'+r.mk+'</td>':'')+'<td style="text-align:center;color:#64748b">'+r.draw+'</td>'
-      +r.nums.map(function(n){ return '<td style="text-align:center;font-family:monospace;font-size:16px;font-weight:700">'+n+'</td>'; }).join('')+'</tr>'; lastY=y; });
+  function tr(r,top,main,tag){ var wd=WK[new Date(r.date+'T00:00:00').getDay()];
+    return '<tr style="border-top:'+top+(main?';background:#fef9c3':'')+'"><td style="padding:4px 6px;white-space:nowrap">'+r.date+(tag?' <span style="font-size:11px;color:#64748b">'+tag+'</span>':'')+'</td><td style="text-align:center">'+wd+'</td>'+(MK.length>1?'<td style="text-align:center">'+r.mk+'</td>':'')+'<td style="text-align:center;color:#64748b">'+r.draw+'</td>'
+      +r.nums.map(function(n){ return '<td style="text-align:center;font-family:monospace;font-size:16px;font-weight:'+(main?'800':'500')+(main?'':';color:#475569')+'">'+n+'</td>'; }).join('')+'</tr>'; }
+  rows.forEach(function(r){
+    if(AR){ var after=r.around.filter(function(a){return a.k>0;}).reverse(), before=r.around.filter(function(a){return a.k<0;}).reverse(), first=true;
+      after.forEach(function(a){ h+=tr(a.r,first?'3px solid #0891b2':'1px solid #e2e8f0',false,'后'+a.k+'期'); first=false; });
+      h+=tr(r,first?'3px solid #0891b2':'1px solid #e2e8f0',true,'');
+      before.forEach(function(a){ h+=tr(a.r,'1px solid #e2e8f0',false,'前'+(-a.k)+'期'); });
+    } else { var y=r.date.slice(0,4); h+=tr(r,y!==lastY?'2px solid #94a3b8':'1px solid #e2e8f0',false,''); lastY=y; } });
   h+='</table></div>';
   var all=[]; rows.forEach(function(r){ r.nums.forEach(function(n){ if(/^\d{4}$/.test(n)) all.push(n); }); });
+  if(AR) h+='<div style="font-size:12px;color:#64748b;margin-top:4px">黄色那行 = 你查的那一期;上面是它之后的几期,下面是之前的几期(同一家)。复制按钮只复制黄色那几期。</div>';
   h+='<div style="margin-top:6px"><button class="btn" style="padding:3px 10px;font-size:12px" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+all.join('\\n')+'\').then(()=>{this.textContent=\'✅ 已复制\'})">📋 复制这些号码(一行一个,'+all.length+' 个)</button></div>';
   out.innerHTML=h;
 }
