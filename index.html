@@ -24576,6 +24576,7 @@ function lhPerPeriodActive(periods){
 }
 
 // 🏆 哪个罗汉开过大奖:选的这几期里,每个罗汉在头/二/三奖开过哪些号码
+var LH_PC=['#dc2626','#2563eb','#16a34a'];   // 头奖红 二奖蓝 三奖绿
 function lhRenderBig(periods){
   var B=Array.from({length:18},function(){ return {c:[0,0,0],list:[]}; }), PZ=['头奖','二奖','三奖'];
   periods.forEach(function(p){ p.records.forEach(function(r){ if(r.prize!==0&&r.prize!==1&&r.prize!==2) return;
@@ -24583,11 +24584,11 @@ function lhRenderBig(periods){
   var ord=B.map(function(o,i){ return {i:i,o:o,n:o.list.length}; }).filter(function(x){ return x.n; }).sort(function(a,b){ return b.o.c[0]-a.o.c[0]||b.n-a.n||a.i-b.i; });
   var none=B.map(function(o,i){ return o.list.length?0:i+1; }).filter(Boolean);
   var html='<div class="card" style="border:2px solid #dc2626"><h3 style="color:#b91c1c">🏆 哪个罗汉开过大奖 · 这 '+periods.length+' 期</h3>';
-  html+='<div style="font-size:12px;color:#64748b;margin-bottom:6px">只算头奖、二奖、三奖。开过头奖的排最前面。一个号码可能同时属于几个罗汉。</div>';
+  html+='<div style="font-size:12px;color:#64748b;margin-bottom:6px">只算头奖、二奖、三奖(<b style="color:#dc2626">头=红</b> · <b style="color:#2563eb">二=蓝</b> · <b style="color:#16a34a">三=绿</b>)。开过头奖的排最前面。一个号码可能同时属于几个罗汉。</div>';
   if(!ord.length) html+='<div style="color:#94a3b8">这几期的头二三没有对上任何罗汉(或者头二三没有勾选)。</div>';
   ord.forEach(function(x){ var o=x.o;
-    html+='<div style="padding:6px 0;border-top:1px solid #f1f5f9"><b style="color:#92400e">罗汉'+(x.i+1)+'</b> <span style="font-size:11px;color:#94a3b8">'+LUOHAN[x.i].join(' ')+'</span> · 头奖 <b style="color:#dc2626">'+o.c[0]+'</b> 次 · 二奖 <b>'+o.c[1]+'</b> 次 · 三奖 <b>'+o.c[2]+'</b> 次'
-      +'<div style="font-size:13px;margin-top:2px;line-height:1.7">'+o.list.map(function(e){ return '<span style="white-space:nowrap;margin-right:10px"><span style="color:#64748b">'+e.date.slice(5)+'</span> '+PZ[e.prize].charAt(0)+' <b style="font-family:monospace;'+(e.prize===0?'color:#dc2626':'')+'">'+e.raw+'</b></span>'; }).join('')+'</div></div>'; });
+    html+='<div style="padding:6px 0;border-top:1px solid #f1f5f9"><b style="color:#92400e">罗汉'+(x.i+1)+'</b> <span style="font-size:11px;color:#94a3b8">'+LUOHAN[x.i].join(' ')+'</span> · <b style="color:'+LH_PC[0]+'">头奖 '+o.c[0]+'</b> 次 · <b style="color:'+LH_PC[1]+'">二奖 '+o.c[1]+'</b> 次 · <b style="color:'+LH_PC[2]+'">三奖 '+o.c[2]+'</b> 次'
+      +'<div style="font-size:13px;margin-top:2px;line-height:1.7">'+o.list.map(function(e){ return '<span style="white-space:nowrap;margin-right:10px"><span style="color:#64748b">'+e.date.slice(5)+'</span> <span style="background:'+LH_PC[e.prize]+';color:#fff;border-radius:4px;padding:0 4px;font-size:12px">'+PZ[e.prize].charAt(0)+'</span> <b style="font-family:monospace;color:'+LH_PC[e.prize]+'">'+e.raw+'</b></span>'; }).join('')+'</div></div>'; });
   if(none.length) html+='<div style="padding-top:6px;border-top:1px solid #f1f5f9;font-size:13px;color:#64748b">这几期没开过大奖的罗汉:'+none.join('、')+'</div>';
   return html+'</div>';
 }
@@ -24598,7 +24599,7 @@ function lhRenderTimeline(periods){
   var chronological = ppData.slice().reverse();
   var sk = lhStreaks(periods);
 
-  var html = '<div class="card"><h3>罗汉出没时间线 · 从旧→新（'+periods.length+'期）</h3><div style="font-size:12px;color:#64748b;margin-bottom:4px">红格 = 开大奖(写 头/二/三);橙色 ● = 只在特别奖或安慰奖。</div>';
+  var html = '<div class="card"><h3>罗汉出没时间线 · 从旧→新（'+periods.length+'期）</h3><div style="font-size:12px;color:#64748b;margin-bottom:4px"><b style="color:#dc2626">红=头奖</b> · <b style="color:#2563eb">蓝=二奖</b> · <b style="color:#16a34a">绿=三奖</b> · 橙色 ● = 只在特别奖或安慰奖。</div>';
   html += '<div class="ot"><table class="lh-tl">';
   html += '<tr><th class="lh-tl-lbl">罗汉</th><th class="lh-tl-var">组合</th>';
   chronological.forEach(function(d){ html += '<th>'+d.date.replace(/^\d{4}-/,'')+'</th>'; });
@@ -24607,7 +24608,7 @@ function lhRenderTimeline(periods){
     html += '<tr><td class="lh-tl-lbl">罗汉'+(i+1)+'</td>';
     html += '<td class="lh-tl-var">'+LUOHAN[i].join(' ')+'</td>';
     chronological.forEach(function(d){
-      html += d.big[i] ? '<td class="lh-tl-hit" style="background:#dc2626">'+d.big[i]+'</td>' : (d.active[i] ? '<td class="lh-tl-hit">●</td>' : '<td class="lh-tl-miss">·</td>');
+      html += d.big[i] ? '<td class="lh-tl-hit" style="background:'+LH_PC['头二三'.indexOf(d.big[i])]+'">'+d.big[i]+'</td>' : (d.active[i] ? '<td class="lh-tl-hit">●</td>' : '<td class="lh-tl-miss">·</td>');
     });
     var isHot = sk.type[i]==='hot';
     html += '<td style="text-align:center;font-size:11px">'+(isHot?'🔥':'❄️')+'</td>';
