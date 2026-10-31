@@ -10765,7 +10765,7 @@ function stRun(){
       if(!any) continue;
       for(var j2=0;j2<t;j2++){ bc[L[j2]]=(bc[L[j2]]||0)+1; }
       var g=null,gc=-1; Object.keys(cnt).forEach(function(k){ if(cnt[k]>gc){gc=cnt[k];g=k;} });
-      bt.n++; if(L[t]===g) bt.hit++; bt.exp+=(bc[g]||0)/t;
+      if(bt.first==null) bt.first=t; bt.n++; if(L[t]===g) bt.hit++; bt.exp+=(bc[g]||0)/t;
     }
     var BTN=function(cur,v,lbl,js){ return '<button class="btn" style="padding:4px 11px;font-size:12px;margin:0 3px 3px 0;'+(cur===v?'background:#7c3aed;color:#fff;font-weight:800':'')+'" onclick="'+js+';stRun()">'+lbl+'</button>'; };
     var x='<div style="margin-top:14px;border:2px solid #7c3aed;border-radius:10px;padding:10px">';
@@ -10796,14 +10796,14 @@ function stRun(){
       var N0=hits.length, keys=Object.keys(base).sort(function(a,b){ return (tally[b]||0)-(tally[a]||0)||(base[b]-base[a]); }), mx=1;
       if(RAW) keys=keys.slice(0,12);
       keys.forEach(function(k){ mx=Math.max(mx,tally[k]||0,N0*base[k]/n); });
-      x+='<div style="margin-top:8px;font-weight:700;color:#334155">━━ 那 '+N0+' 次,下一期开了 ━━</div>';
+      x+='<div style="margin-top:8px;font-weight:700;color:#334155">━━ 那 '+N0+' 次,下一期开了 ━━</div><div style="font-size:12px;color:#64748b;margin-bottom:3px">📅 累计范围:'+sq2[0].date+' ~ '+sq2[n-1].date+',共 '+n+' 期(整段历史,不受上面「看多久」影响)。第一次出现 '+sq2[hits[0].i].date+',最近一次 '+sq2[hits[hits.length-1].i].date+'。</div>';
       x+=keys.map(function(k){ var o=tally[k]||0, e=N0*base[k]/n; return '<div style="display:flex;align-items:center;gap:6px;font-size:13px;margin:2px 0"><span style="width:70px;text-align:right;font-weight:700">'+nm(k)+'</span><span style="flex:1;max-width:260px;background:#f1f5f9;border-radius:4px;height:14px;position:relative"><i style="position:absolute;left:0;top:0;bottom:0;width:'+(o/mx*100)+'%;background:#a78bfa;border-radius:4px"></i></span><span style="width:250px"><b>'+o+'</b> 次 · 机率 <b style="color:#7c3aed">'+Math.round(o/N0*100)+'%</b> <span style="color:#64748b">(平常 '+Math.round(base[k]/n*100)+'%)</span></span></div>'; }).join('');
       if(RAW) x+='<div style="font-size:11px;color:#94a3b8">(只列开最多的 12 个 2D)</div>';
       var tk=keys[0]; x+='<div style="margin-top:6px;background:#f5f3ff;border-radius:8px;padding:6px 10px;font-size:14px">👉 照以前的走势,下一期最常跟着开 <b>【'+nm(tk)+'】</b>:'+(tally[tk]||0)+'/'+N0+' 次,成功机率约 <b style="color:#7c3aed">'+Math.round((tally[tk]||0)/N0*100)+'%</b>(平常就有 '+Math.round(base[tk]/n*100)+'%)</div>';
     }
     x+='<div style="margin-top:8px;font-weight:700;color:#334155">━━ 照这个方法以前准不准 ━━</div>';
     if(bt.n){ var lead=bt.hit-bt.exp, se=Math.sqrt(Math.max(bt.exp,1));
-      x+='<div style="font-size:13px;line-height:1.7">倒回去最近 '+bt.n+' 期,每期都猜「以前跟着开最多的那种」:猜中 <b>'+bt.hit+'</b> 期(成功机率 <b>'+Math.round(bt.hit/bt.n*100)+'%</b>),随便猜约 <b>'+bt.exp.toFixed(0)+'</b> 期('+Math.round(bt.exp/bt.n*100)+'%) → <b style="color:'+(lead>2*se?'#16a34a':lead<-2*se?'#dc2626':'#64748b')+'">'+(lead>2*se?'比随便猜好':lead<-2*se?'比随便猜差':'跟随便猜差不多')+'</b></div>'; }
+      x+='<div style="font-size:13px;line-height:1.7">倒回去最近 '+bt.n+' 期('+sq2[bt.first].date+' ~ '+sq2[n-1].date+'),每期都猜「以前跟着开最多的那种」:猜中 <b>'+bt.hit+'</b> 期(成功机率 <b>'+Math.round(bt.hit/bt.n*100)+'%</b>),随便猜约 <b>'+bt.exp.toFixed(0)+'</b> 期('+Math.round(bt.exp/bt.n*100)+'%) → <b style="color:'+(lead>2*se?'#16a34a':lead<-2*se?'#dc2626':'#64748b')+'">'+(lead>2*se?'比随便猜好':lead<-2*se?'比随便猜差':'跟随便猜差不多')+'</b></div>'; }
     else x+='<div style="font-size:13px;color:#94a3b8">资料不够,没办法倒回去试。</div>';
     x+='</div>';
     h+=x;
