@@ -1221,8 +1221,8 @@ function dlRun(){
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="flt-lo-on" style="width:auto">🕰️ 上一次开(头二三)</label>
       <select id="flt-lo-grp" style="width:auto"><option value="exact">正字</option><option value="box">调字</option></select>
       <select id="flt-lo-scope" style="width:auto"><option value="same">只看这家</option><option value="all">8 家都找</option></select>
-      <span>距今</span><select id="flt-lo-cmp" style="width:auto"><option value="ge">超过</option><option value="le">不到</option></select>
-      <input type="number" id="flt-lo-y" min="0" step="0.5" value="3" style="width:60px"><span>年的才留下</span>
+      <span>留下</span><select id="flt-lo-cmp" style="width:auto"><option value="ge">X 年以上没开过的(上次开在 X 年之前)</option><option value="le">X 年之内开过的(上次开在最近 X 年)</option></select>
+      <span>X =</span><input type="number" id="flt-lo-y" min="0" step="0.5" value="3" style="width:60px"><span>年</span>
       <span style="color:#94a3b8">(结果表会多一栏「上次开」)</span>
     </div>
     <div id="flt-repeat-check-out" style="margin-top:8px"></div>
