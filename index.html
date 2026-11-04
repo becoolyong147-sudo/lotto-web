@@ -892,6 +892,19 @@ function dlRun(){
     <div id="lc-out" style="margin-top:10px"></div>
   </div>
 
+  <div class="card" style="border:2px solid #0e7490">
+    <h3 style="color:#0e7490">🕰️ 检查我的号码以前开过没有</h3>
+    <div class="warn" style="margin:6px 0">把你的号码贴进去,一个一个查:以前在<b>头二三</b>开过几次、上一次开在哪天、隔了多久。</div>
+    <textarea id="lom-in" rows="5" style="width:100%;box-sizing:border-box;font-family:monospace;font-size:13px" placeholder="贴号码,如 0693, 0860, 1293…"></textarea>
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:6px">
+      <div><label style="font-size:12px;color:#0e7490;font-weight:700;display:block">市场</label><select id="lom-mk"><option>万能</option><option>跑马</option><option>多多</option><option>新加坡</option><option>豪龙</option><option>沙巴</option><option>9龙</option><option>砂拉越</option></select></div>
+      <div><label style="font-size:12px;color:#0e7490;font-weight:700;display:block">在哪里找</label><select id="lom-scope"><option value="same">只看这家</option><option value="all">8 家都找</option></select></div>
+      <div><label style="font-size:12px;color:#0e7490;font-weight:700;display:block">号码口径</label><select id="lom-grp"><option value="exact">正字(原号)</option><option value="box">调字(任何排列都算)</option></select></div>
+      <button class="btn" style="padding:9px 18px;font-size:14px;background:#0e7490;color:#fff" onclick="loCheckMine()">🕰️ 查</button>
+    </div>
+    <div id="lom-out" style="margin-top:8px"></div>
+  </div>
+
   <div class="card" style="border:2px solid #f59e0b">
     <h3>💰 对账 — 贴你买的号,算某一天赚多少</h3>
     <div class="warn" style="margin:6px 0">只算你贴的号、只算选的那一天。头二三每个奖各押一份;特别奖押一份(按小奖赔率)。不算安慰奖。</div>
@@ -1203,6 +1216,14 @@ function dlRun(){
       <input type="number" id="flt-exclude-months" min="1" value="12" style="width:60px">
       <span style="font-size:12px;color:#065f46">个月内开过的号码</span>
       <button class="btn" style="padding:5px 12px;font-size:11px;margin-left:auto" onclick="runRepeatRateCheck()">📊 验证：这个假设站得住脚吗？</button>
+    </div>
+    <div class="row" style="align-items:center;margin-top:8px;border-top:1px dashed #a7f3d0;padding-top:8px;gap:6px;flex-wrap:wrap;font-size:12px;color:#065f46">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="flt-lo-on" style="width:auto">🕰️ 上一次开(头二三)</label>
+      <select id="flt-lo-grp" style="width:auto"><option value="exact">正字</option><option value="box">调字</option></select>
+      <select id="flt-lo-scope" style="width:auto"><option value="same">只看这家</option><option value="all">8 家都找</option></select>
+      <span>距今</span><select id="flt-lo-cmp" style="width:auto"><option value="ge">超过</option><option value="le">不到</option></select>
+      <input type="number" id="flt-lo-y" min="0" step="0.5" value="3" style="width:60px"><span>年的才留下</span>
+      <span style="color:#94a3b8">(结果表会多一栏「上次开」)</span>
     </div>
     <div id="flt-repeat-check-out" style="margin-top:8px"></div>
     <div class="row" style="align-items:center;margin-top:8px;border-top:1px dashed #a7f3d0;padding-top:8px;flex-wrap:wrap;gap:10px">
@@ -5295,6 +5316,16 @@ function runAdvancedFilter(){
     }
   }
 
+  // 🕰️ 上一次开(头二三)距今多久:正字/调字、这家/8家
+  window.__fltLo=null;
+  if(document.getElementById('flt-lo-on')?.checked){
+    const LI=loIndex(market, document.getElementById('flt-lo-scope').value, document.getElementById('flt-lo-grp').value);
+    const loY=parseFloat(document.getElementById('flt-lo-y').value)||0, loCmp=document.getElementById('flt-lo-cmp').value;
+    window.__fltLo={};
+    grouped=grouped.filter(g=>{ const o=LI.idx[LI.key(g.num)], gp=o?loGap(o.last.date,LI.latest):null; window.__fltLo[g.num]=o?{date:o.last.date,txt:gp.txt,c:o.c}:null;
+      const y=gp?gp.years:1e9; return loCmp==='ge'?y>=loY:y<loY; });
+  }
+
   // 🔥 活跃度过滤:近期活跃(窗口内开过) + 上/下半年型(全历史 H1 vs H2)
   var actWin=parseInt((document.getElementById('flt-act-win')||{value:'0'}).value,10)||0;
   var actOn=(document.getElementById('flt-act-on')||{checked:false}).checked;
@@ -5401,7 +5432,7 @@ function runAdvancedFilter(){
       const _act = window.__fltActMap ? window.__fltActMap[g.num] : null;
       const _actTag = _act ? `<div style="font-size:9px;color:#92400e;white-space:nowrap">${_act.h2>_act.h1?'H2':_act.h1>_act.h2?'H1':'均'} ${_act.h1}:${_act.h2}${_act.last?' ·最近'+_act.last.slice(0,7):''}</div>` : '';
       return `<tr${g._dup?` style="opacity:.4" title="别的数根(${g._dupFrom})已出过"`:''}>
-        <td><span class="nc nc-sm"${g._dup?' style="text-decoration:line-through"':''}>${g.num}</span>${_actTag}</td>
+        <td><span class="nc nc-sm"${g._dup?' style="text-decoration:line-through"':''}>${g.num}</span>${_actTag}${window.__fltLo?(window.__fltLo[g.num]?`<div style="font-size:10px;color:#0e7490;white-space:nowrap">🕰️上次 ${window.__fltLo[g.num].date} · 隔${window.__fltLo[g.num].txt}</div>`:'<div style="font-size:10px;color:#dc2626">🆕没开过</div>'):''}</td>
         <td style="white-space:nowrap">${g._cat.chip}</td>
         <td><span class="bb">${g.count}次</span></td>
         <td>${prizeMiniCounts(g)}</td>
@@ -10366,6 +10397,37 @@ function zoCommonRate(){
   out.innerHTML=h; out.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
+// 🕰️ 共用:号码 → 以前在头二三开过几次 + 最后一次(哪天/哪家/哪个奖/当时开的号)。grp: exact 正字 / box 调字;scope: same 这家 / all 8家
+function loIndex(mk, scope, grp){
+  var MK=['万能','跑马','多多','新加坡','豪龙','沙巴','9龙','砂拉越'], idx={}, latest='';
+  (scope==='all'?MK:[mk]).forEach(function(m){ (typeof payAllDraws==='function'?payAllDraws(m):(DB[m]||[])).forEach(function(d){
+    if(!d||!d.date||!d.nums||String(d.date).endsWith('-00')) return; var dt=String(d.date).slice(0,10); if(m===mk&&dt>latest) latest=dt;
+    [0,1,2].forEach(function(pi){ var v=d.nums[pi]; if(v==null||v==='') return; var n=String(v).padStart(4,'0'); if(!/^\d{4}$/.test(n)) return;
+      var k=grp==='box'?n.split('').sort().join(''):n, o=idx[k]||(idx[k]={c:0,last:null}); o.c++;
+      if(!o.last||dt>o.last.date) o.last={date:dt,mk:m,pz:'头二三'.charAt(pi),num:n}; }); }); });
+  return {idx:idx, latest:latest||new Date().toISOString().slice(0,10), key:function(n){ n=String(n).padStart(4,'0'); return grp==='box'?n.split('').sort().join(''):n; }};
+}
+function loGap(from,to){ var days=Math.round((new Date(to)-new Date(from))/86400000), y=Math.floor(days/365), mo=Math.floor((days%365)/30); return {days:days, years:days/365, txt:(y?y+'年':'')+(mo?mo+'个月':'')+(!y&&!mo?days+'天':'')}; }
+// 🕰️ 检查我的号码以前开过没有(号码对比页)
+function loCheckMine(){
+  var out=document.getElementById('lom-out'); if(!out) return;
+  var mk=document.getElementById('lom-mk').value, scope=document.getElementById('lom-scope').value, grp=document.getElementById('lom-grp').value;
+  var nums=[], seen={}; (document.getElementById('lom-in').value.match(/\d{4}/g)||[]).forEach(function(n){ if(!seen[n]){ seen[n]=1; nums.push(n); } });
+  if(!nums.length){ out.innerHTML='<div class="warn">请先贴号码(4 位数,空格、逗号、换行都行)。</div>'; return; }
+  var I=loIndex(mk,scope,grp), rows=nums.map(function(n){ var o=I.idx[I.key(n)]; return {n:n,c:o?o.c:0,last:o?o.last:null,gap:o?loGap(o.last.date,I.latest):null}; });
+  rows.sort(function(a,b){ return (b.last?b.last.date:'')<(a.last?a.last.date:'')?-1:((b.last?b.last.date:'')>(a.last?a.last.date:'')?1:0); });
+  var opened=rows.filter(function(r){return r.c;}), never=rows.filter(function(r){return !r.c;});
+  var h='<div style="font-weight:800;color:#0e7490;margin-bottom:4px">'+nums.length+' 个号码:以前开过 <span style="color:#16a34a">'+opened.length+'</span> 个,从来没开过 <span style="color:#dc2626">'+never.length+'</span> 个 <span style="font-weight:400;font-size:12px;color:#64748b">('+(scope==='all'?'8 家':mk)+' · 只算头二三 · '+(grp==='box'?'调字':'正字')+' · 算到 '+I.latest+')</span></div>';
+  function cp(list,lbl){ return list.length?'<button class="btn" style="padding:3px 10px;font-size:12px;margin:2px 4px 6px 0" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+list.map(function(r){return r.n;}).join('\\n')+'\').then(()=>{this.textContent=\'✅ 已复制\'})">📋 复制'+lbl+'('+list.length+')</button>':''; }
+  h+=cp(opened,'开过的')+cp(never,'没开过的');
+  h+='<div style="overflow-x:auto;max-height:420px"><table style="border-collapse:collapse;font-size:13px;width:100%"><tr style="background:#ecfeff;color:#0e7490"><th style="padding:4px 6px">你的号码</th><th>开过几次</th><th style="text-align:left">上一次开在</th><th>隔多久</th></tr>';
+  rows.forEach(function(r){ var g=r.gap, col=!g?'#dc2626':(g.years>=10?'#dc2626':g.years>=3?'#d97706':'#16a34a');
+    h+='<tr style="border-top:1px solid #e2e8f0"><td style="padding:4px 6px;text-align:center;font-family:monospace;font-size:15px;font-weight:700">'+r.n+'</td><td style="text-align:center">'+(r.c||'—')+'</td>'
+      +'<td style="padding:4px 6px">'+(r.last?'<b>'+r.last.date+'</b> <span style="color:#64748b;font-size:12px">'+(scope==='all'?r.last.mk+' · ':'')+r.last.pz+'奖'+(r.last.num!==r.n?' · 当时开 '+r.last.num:'')+'</span>':'<span style="color:#dc2626;font-weight:700">🆕 从来没开过</span>')+'</td>'
+      +'<td style="text-align:center;font-weight:700;color:'+col+'">'+(g?g.txt:'—')+'</td></tr>'; });
+  h+='</table></div><div style="font-size:11px;color:#94a3b8;margin-top:4px">隔多久:绿=3年内、橙=3–10年、红=10年以上。最近开过的排最上面。</div>';
+  out.innerHTML=h;
+}
 // 🕰️ 新开号 · 上次开在哪天:每期头二三 → 同号(或调字)上一次开奖的日期、隔多久、开过几次
 function zoLastOpen(){
   var out=document.getElementById('lo-out'); if(!out) return;
