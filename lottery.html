@@ -1225,6 +1225,12 @@ function dlRun(){
       <span>X =</span><input type="number" id="flt-lo-y" min="0" step="0.5" value="3" style="width:60px"><span>年</span>
       <span style="color:#94a3b8">(结果表会多一栏「上次开」)</span>
     </div>
+    <div class="row" style="align-items:center;margin-top:8px;border-top:1px dashed #a7f3d0;padding-top:8px;gap:6px;flex-wrap:wrap;font-size:12px;color:#065f46">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="flt-box-on" style="width:auto">🔁 分身(调字)开过</label>
+      <select id="flt-box-cmp" style="width:auto"><option value="ge">次以上(含)</option><option value="le">次以下(含)</option></select>
+      <span>次数 =</span><input type="number" id="flt-box-n" min="0" value="18" style="width:60px">
+      <span style="color:#94a3b8">(这家全历史头二三,任何排列都算)</span>
+    </div>
     <div id="flt-repeat-check-out" style="margin-top:8px"></div>
     <div class="row" style="align-items:center;margin-top:8px;border-top:1px dashed #a7f3d0;padding-top:8px;flex-wrap:wrap;gap:10px">
       <span style="font-size:12px;font-weight:700;color:#b45309">🔥 活跃度</span>
@@ -5319,6 +5325,10 @@ function runAdvancedFilter(){
   // 🔁 分身(调字)开过几次:这家全历史头二三,同样四个数字任何排列都算;另记这组有几个分身
   window.__fltBox=(function(){ var c={}; (typeof payAllDraws==='function'?payAllDraws(market):(DB[market]||[])).forEach(function(d){ if(!d||!d.nums||String(d.date).endsWith('-00')) return;
     [0,1,2].forEach(function(pi){ var v=d.nums[pi]; if(v==null||v==='') return; var n=String(v).padStart(4,'0'); if(!/^\d{4}$/.test(n)) return; var k=n.split('').sort().join(''); c[k]=(c[k]||0)+1; }); }); return c; })();
+  if(document.getElementById('flt-box-on')?.checked){
+    const bN=parseInt(document.getElementById('flt-box-n').value,10)||0, bCmp=document.getElementById('flt-box-cmp').value;
+    grouped=grouped.filter(g=>{ const c=window.__fltBox[String(g.num).padStart(4,'0').split('').sort().join('')]||0; return bCmp==='ge'?c>=bN:c<=bN; });
+  }
   // 🕰️ 上一次开(头二三)距今多久:正字/调字、这家/8家
   window.__fltLo=null;
   if(document.getElementById('flt-lo-on')?.checked){
