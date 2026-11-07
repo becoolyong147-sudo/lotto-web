@@ -5316,6 +5316,9 @@ function runAdvancedFilter(){
     }
   }
 
+  // 🔁 分身(调字)开过几次:这家全历史头二三,同样四个数字任何排列都算;另记这组有几个分身
+  window.__fltBox=(function(){ var c={}; (typeof payAllDraws==='function'?payAllDraws(market):(DB[market]||[])).forEach(function(d){ if(!d||!d.nums||String(d.date).endsWith('-00')) return;
+    [0,1,2].forEach(function(pi){ var v=d.nums[pi]; if(v==null||v==='') return; var n=String(v).padStart(4,'0'); if(!/^\d{4}$/.test(n)) return; var k=n.split('').sort().join(''); c[k]=(c[k]||0)+1; }); }); return c; })();
   // 🕰️ 上一次开(头二三)距今多久:正字/调字、这家/8家
   window.__fltLo=null;
   if(document.getElementById('flt-lo-on')?.checked){
@@ -5432,7 +5435,7 @@ function runAdvancedFilter(){
       const _act = window.__fltActMap ? window.__fltActMap[g.num] : null;
       const _actTag = _act ? `<div style="font-size:9px;color:#92400e;white-space:nowrap">${_act.h2>_act.h1?'H2':_act.h1>_act.h2?'H1':'均'} ${_act.h1}:${_act.h2}${_act.last?' ·最近'+_act.last.slice(0,7):''}</div>` : '';
       return `<tr${g._dup?` style="opacity:.4" title="别的数根(${g._dupFrom})已出过"`:''}>
-        <td><span class="nc nc-sm"${g._dup?' style="text-decoration:line-through"':''}>${g.num}</span>${_actTag}${window.__fltLo?(window.__fltLo[g.num]?`<div style="font-size:10px;color:#0e7490;white-space:nowrap">🕰️上次 ${window.__fltLo[g.num].date} · 隔${window.__fltLo[g.num].txt}</div>`:'<div style="font-size:10px;color:#dc2626">🆕没开过</div>'):''}</td>
+        <td><span class="nc nc-sm"${g._dup?' style="text-decoration:line-through"':''}>${g.num}</span>${_actTag}${window.__fltBox?(()=>{ const k=String(g.num).padStart(4,'0').split('').sort().join(''), sz={1:1,2:(/(.)(.)/.test(k)?6:4),3:12,4:24}[new Set(k).size]; return `<div style="font-size:10px;color:#7c3aed;white-space:nowrap" title="同样四个数字、任何排列(分身)在${market}头二三一共开过几次;这组共有${sz}个分身">🔁分身开过 <b>${window.__fltBox[k]||0}</b> 次<span style="color:#94a3b8">(${sz}个分身)</span></div>`; })():''}${window.__fltLo?(window.__fltLo[g.num]?`<div style="font-size:10px;color:#0e7490;white-space:nowrap">🕰️上次 ${window.__fltLo[g.num].date} · 隔${window.__fltLo[g.num].txt}</div>`:'<div style="font-size:10px;color:#dc2626">🆕没开过</div>'):''}</td>
         <td style="white-space:nowrap">${g._cat.chip}</td>
         <td><span class="bb">${g.count}次</span></td>
         <td>${prizeMiniCounts(g)}</td>
