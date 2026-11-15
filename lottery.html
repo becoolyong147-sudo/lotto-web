@@ -22716,7 +22716,9 @@ function zoRootDigitComboBacktest(){
         s+='<div style="margin-top:3px;display:flex;gap:5px;flex-wrap:wrap">';
         if(allFit.length){ s+='<button class="btn" style="padding:3px 10px;font-size:11px;background:#f59e0b;color:#fff" onclick="zoSend2DToFilter(\''+allFit.join(' ')+'\',\''+mk+'\','+wi+')">📤 送应景进筛选('+allFit.length+')</button>'+cpBtn(allFit.join(' '),'📋复制应景('+allFit.length+')','#fffbeb','#b45309','#fde68a'); }
         if(allWins.length){ var lst=allWins.join(' ');
-          s+='<button class="btn" style="padding:3px 10px;font-size:11px;background:'+col+';color:#fff" onclick="zoSend2DToFilter(\''+lst+'\',\''+mk+'\','+wi+')">📤 送双缺进筛选('+allWins.length+')</button>'+cpBtn(lst,'📋复制双缺('+allWins.length+')','#fff',col,col); }
+          s+='<button class="btn" style="padding:3px 10px;font-size:11px;background:'+col+';color:#fff" onclick="zoSend2DToFilter(\''+lst+'\',\''+mk+'\','+wi+')">📤 送双缺进筛选('+allWins.length+')</button>'+cpBtn(lst,'📋复制双缺('+allWins.length+')','#fff',col,col);
+          var _fs={}; allFit.forEach(function(v){_fs[v]=1;}); var noFit=allWins.filter(function(v){ return !_fs[v]; });
+          if(allFit.length&&noFit.length){ s+='<button class="btn" style="padding:3px 10px;font-size:11px;background:#fff;color:'+col+';border:1px dashed '+col+'" onclick="zoSend2DToFilter(\''+noFit.join(' ')+'\',\''+mk+'\','+wi+')">📤 送双缺不含应景('+noFit.length+')</button>'+cpBtn(noFit.join(' '),'📋复制双缺不含应景('+noFit.length+')','#fff',col,col); } }
         if(allNon.length){ s+=cpBtn(allNon.join(' '),'📋复制未选('+allNon.length+')','#f8fafc','#64748b','#cbd5e1'); }
         if(allCombo.length){ s+='<button class="btn" style="padding:3px 10px;font-size:11px;background:#ede9fe;color:#5b21b6;border:1px solid #ddd6fe" onclick="zoSend2DToFilter(\''+allCombo.join(' ')+'\',\''+mk+'\','+wi+')">📤 送全部进筛选('+allCombo.length+')</button>'+cpBtn(allCombo.join(' '),'📋复制全部('+allCombo.length+')','#ede9fe','#5b21b6','#ddd6fe'); }
         s+='</div>';
