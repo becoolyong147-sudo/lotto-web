@@ -770,10 +770,14 @@ function dlRun(){
   // 相关:0=没有 1=三个数字都有但拆开 2=连着三位(前3或后3,任何排列)
   var relOf=function(n){ if(!REL||!/^\d{4}$/.test(n)) return 0; var k=key3(NS); if(key3(n.slice(0,3))===k||key3(n.slice(1))===k) return 2;
     return (key3(n[0]+n[1]+n[3])===k||key3(n[0]+n[2]+n[3])===k)?1:0; };
-  var rows=[], found=[], fmt=function(mk,r){ return {mk:mk,date:String(r.date).slice(0,10),draw:r.draw||'',nums:[0,1,2].map(function(k){ var v=r.nums&&r.nums[k]; return v==null||v===''?'----':String(v).padStart(4,'0'); })}; };
+  var rows=[], found=[], own=[], HIS={}, fmt=function(mk,r){ return {mk:mk,date:String(r.date).slice(0,10),draw:r.draw||'',sp:(r.sp||[]).map(function(v){ return String(v).padStart(4,'0'); }).filter(function(v){ return /^\d{4}$/.test(v); }),nums:[0,1,2].map(function(k){ var v=r.nums&&r.nums[k]; return v==null||v===''?'----':String(v).padStart(4,'0'); })}; };
   MK.forEach(function(mk){ var L=(typeof payAllDraws==='function'?payAllDraws(mk):(DB[mk]||[])).filter(function(r){ return r&&r.date&&r.nums; }).slice().sort(function(a,b){ return String(a.date).localeCompare(String(b.date)); });
     L.forEach(function(r,i){ var dt=String(r.date||'').slice(0,10), rn=parseInt(String(r.draw||'').split('/')[0],10);
-      if(REL){ var f=fmt(mk,r); f.nums.forEach(function(n,p){ var t=relOf(n); if(t) found.push({mk:mk,date:f.date,draw:f.draw,p:p,n:n,t:t}); }); }
+      if(REL){ var f=fmt(mk,r);
+        f.nums.forEach(function(n,p){ if(!/^\d{4}$/.test(n)) return; var b=mk+key3(n); (HIS[b]=HIS[b]||[]).push({date:f.date,n:n,p:p});
+          var t=relOf(n); if(t) found.push({mk:mk,L:L,i:i,date:f.date,draw:f.draw,p:p,n:n,t:t});
+          if(rn>99&&rn<1000){ var k=key3(String(rn)); if(key3(n.slice(0,3))===k||key3(n.slice(1))===k) own.push({mk:mk,L:L,i:i,date:f.date,draw:f.draw,p:p,n:n}); } });
+        f.sp.forEach(function(n){ var t=relOf(n); if(t===2) found.push({mk:mk,L:L,i:i,date:f.date,draw:f.draw,p:3,n:n,t:3}); }); }
       var ok=mode==='date'?(dt.slice(5)===mm+'-'+dd):(rn===no||(REL&&rn>0&&rn<1000&&key3(('00'+rn).slice(-3))===key3(NS)));
       if(!ok) return; var o=fmt(mk,r); o.around=[]; o.no=rn;
       for(var k=-AR;k<=AR;k++){ var q=L[i+k]; if(k!==0&&q) o.around.push({k:k,r:fmt(mk,q)}); }
@@ -782,12 +786,17 @@ function dlRun(){
   var title=mode==='date'?(+mm)+' 月 '+(+dd)+' 日':'第 '+no+' 期';
   if(!rows.length&&!found.length){ out.innerHTML='<div class="warn">'+(mkSel==='*'?'8 家':mkSel)+' 历年的'+title+'都没有开奖记录'+(mode==='date'?'(那天不是开奖日)':'')+'。</div>'; return; }
   var h='<div style="font-weight:800;color:#0e7490;margin-bottom:4px">'+(mkSel==='*'?'8 家':mkSel)+' · 历年'+title+(REL?'和相关期号':'')+' · 共 '+rows.length+' 期</div>';
-  if(REL) h+='<div style="font-size:13px;margin-bottom:4px"><span style="background:#86efac;padding:1px 6px">绿 = '+NS+' 连着(前3或后3,任何排列)</span> <span style="background:#fed7aa;padding:1px 6px">橙 = 三个数字都有,但拆开</span></div>';
+  if(REL) h+='<div style="font-size:13px;margin-bottom:4px"><span style="background:#86efac;padding:1px 6px">绿 = '+NS+' 连着(前3或后3,任何排列)</span> <span style="background:#fed7aa;padding:1px 6px">橙 = 三个数字都有,但拆开</span><div style="color:#64748b;font-size:12px">号码底下小字 = 它的分身在那一期之前,上次开什么、哪天、一共来过几次</div></div>';
   h+='<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:14px;width:100%"><tr style="background:#ecfeff;color:#0e7490"><th style="text-align:left;padding:4px 6px">日期</th><th>星期</th>'+(MK.length>1?'<th>市场</th>':'')+'<th>期号</th><th>头奖</th><th>二奖</th><th>三奖</th></tr>';
   var lastY='';
   function tr(r,top,main,tag){ var wd=WK[new Date(r.date+'T00:00:00').getDay()];
     return '<tr style="border-top:'+top+(main?';background:#fef9c3':'')+'"><td style="padding:4px 6px;white-space:nowrap">'+r.date+(tag?' <span style="font-size:11px;color:#64748b">'+tag+'</span>':'')+'</td><td style="text-align:center">'+wd+'</td>'+(MK.length>1?'<td style="text-align:center">'+r.mk+'</td>':'')+'<td style="text-align:center;color:#64748b">'+r.draw+'</td>'
-      +r.nums.map(function(n){ var t=relOf(n); return '<td style="text-align:center;'+(t?'background:'+(t===2?'#86efac':'#fed7aa')+';':'')+'font-family:monospace;font-size:16px;font-weight:'+(main?'800':'500')+(main?'':';color:#475569')+'">'+n+'</td>'; }).join('')+'</tr>'; }
+      +r.nums.map(function(n){ var t=relOf(n); return '<td style="text-align:center;'+(t?'background:'+(t===2?'#86efac':'#fed7aa')+';':'')+'font-family:monospace;font-size:16px;font-weight:'+(main?'800':'500')+(main?'':';color:#475569')+'">'+n+before(r,n)+'</td>'; }).join('')+'</tr>'
+      +(REL&&r.sp.length?'<tr'+(main?' style="background:#fef9c3"':'')+'><td colspan="7" style="padding:2px 6px 5px;font-size:12px;color:#64748b;line-height:1.8">特别奖 '+r.sp.map(function(n){ return mark(n,13); }).join(' ')+'</td></tr>':''); }
+  function mark(n,size){ var t=relOf(n); return '<span style="display:inline-block;padding:0 4px;border-radius:3px;color:#0f172a;font-family:monospace;font-size:'+size+'px;'+(t?'background:'+(t===2?'#86efac':'#fed7aa'):'')+'">'+n+'</span>'; }
+  // 这个号码的分身:在那一期之前开过几次、上一次哪天开什么
+  function before(r,n){ if(!REL||!/^\d{4}$/.test(n)) return ''; var a=(HIS[r.mk+key3(n)]||[]).filter(function(x){ return x.date<r.date; }), q=a[a.length-1];
+    return '<div style="font:400 10px/1.35 system-ui;color:#64748b;white-space:nowrap">'+(q?'上次<br><b>'+q.n+'</b><br>'+q.date.slice(2)+'<br>之前'+a.length+'次':'分身<br>第一次来')+'</div>'; }
   var lastNo=null;
   rows.forEach(function(r){
     if(REL&&r.no!==lastNo){ lastNo=r.no; lastY=''; h+='<tr><td colspan="7" style="text-align:left;padding:6px;background:#0e7490;color:#fff;font-weight:800">'+(r.no===no?'':'相关:')+'第 '+r.no+' 期</td></tr>'; }
@@ -801,13 +810,25 @@ function dlRun(){
   if(AR) h+='<div style="font-size:12px;color:#64748b;margin-top:4px">黄色那行 = 你查的那一期;上面是它之后的几期,下面是之前的几期(同一家)。复制按钮只复制黄色那几期。</div>';
   h+='<div style="margin-top:6px"><button class="btn" style="padding:3px 10px;font-size:12px" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+all.join('\\n')+'\').then(()=>{this.textContent=\'✅ 已复制\'})">📋 复制这些号码(一行一个,'+all.length+' 个)</button></div>';
   if(REL){
-    found.sort(function(a,b){ return b.date.localeCompare(a.date); });
-    [[2,NS+' 连着的号码','#86efac'],[1,NS+' 拆开的号码','#fed7aa']].forEach(function(g){
-      var L=found.filter(function(x){ return x.t===g[0]; }), u={}; L.forEach(function(x){ u[x.n]=1; }); var U=Object.keys(u);
-      h+='<details '+(g[0]===2?'open':'')+' style="margin-top:10px"><summary style="cursor:pointer;font-weight:800;padding:6px;background:'+g[2]+'">以前开过 '+g[1]+'(不管第几期):'+L.length+' 次</summary>';
-      if(U.length) h+='<button class="btn" style="padding:3px 10px;font-size:12px;margin:5px 0" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+U.join('\n')+'\').then(()=>{this.textContent=\'✅ 已复制\'})">📋 复制(一行一个,'+U.length+' 个)</button>';
-      h+='<div style="max-height:360px;overflow:auto">'+L.map(function(x){ return '<div style="padding:3px 4px;border-top:1px solid #e2e8f0;font-size:13px"><b style="font-family:monospace;font-size:17px">'+x.n+'</b>　'+x.date+(MK.length>1?' '+x.mk:'')+' '+'头二三'.charAt(x.p)+'奖 <span style="color:#64748b">'+x.draw+' 期</span></div>'; }).join('')+'</div></details>';
+    var PZN=['头奖','二奖','三奖','特别奖'], box=function(title,bg,body,open){ return '<details '+(open?'open':'')+' style="margin-top:10px"><summary style="cursor:pointer;font-weight:800;padding:7px;background:'+bg+'">'+title+'</summary>'+body+'</details>'; };
+    var copy=function(L){ var u={}; L.forEach(function(x){ u[x.n]=1; }); var U=Object.keys(u); return U.length?'<button class="btn" style="padding:3px 10px;font-size:12px;margin:5px 0" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+U.join('\n')+'\').then(()=>{this.textContent=\'✅ 已复制\'})">📋 复制(一行一个,'+U.length+' 个)</button>':''; };
+    // 一次一行:号码 + 那一期头二三 + 前一期、后一期
+    var list=function(L,noMark){ return copy(L)+'<div style="max-height:420px;overflow:auto">'+L.map(function(x){
+      var line=function(k,lbl){ var q=x.L[x.i+k]; if(!q) return ''; var f=fmt(x.mk,q); return '<div style="white-space:nowrap;'+(k?'color:#64748b':'background:#fef9c3')+'"><span style="display:inline-block;width:46px">'+lbl+'</span>'+f.date+' '+f.nums.map(function(n){ return noMark?'<span style="font-family:monospace;font-size:14px;padding:0 4px;'+(!k&&n===x.n?'background:#86efac':'')+'">'+n+'</span>':mark(n,14); }).join(' ')+'</div>'; };
+      return '<div style="padding:5px 4px;border-top:2px solid #cbd5e1;font-size:12px"><b style="font-family:monospace;font-size:18px">'+x.n+'</b>　<b>'+PZN[x.p]+'</b> '+x.date+(MK.length>1?' '+x.mk:'')+' · '+x.draw+' 期'+line(-1,'前1期')+line(0,'那一期')+line(1,'后1期')+'</div>'; }).join('')+'</div>'; };
+    var newest=function(a,b){ return b.date.localeCompare(a.date); }; found.sort(newest); own.sort(newest);
+
+    var P6={}, c=NS.split(''); [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]].forEach(function(o){ P6[c[o[0]]+c[o[1]]+c[o[2]]]=1; });
+    var main3=found.filter(function(x){ return x.t===2; }), body='';
+    Object.keys(P6).sort(function(a,b){ return (b===NS)-(a===NS)||a.localeCompare(b); }).forEach(function(q){
+      var F=main3.filter(function(x){ return x.n.slice(0,3)===q; }), B=main3.filter(function(x){ return x.n.slice(1)===q; });
+      body+=box(q+'x　开过 '+F.length+' 次'+(F.length?' · 最近 '+F[0].n+'('+F[0].date+')':''),'#dcfce7',list(F),false)
+          +box('x'+q+'　开过 '+B.length+' 次'+(B.length?' · 最近 '+B[0].n+'('+B[0].date+')':''),'#f0fdf4',list(B),false);
     });
+    h+=box('① '+NS+' 连着:每一种排法分开看(头二三)','#86efac',copy(main3)+body,true);
+    h+=box('② '+NS+' 拆开的号码(头二三)','#fed7aa',list(found.filter(function(x){ return x.t===1; })),false);
+    h+=box('③ 特别奖开过 '+NS+' 连着的(只有近几年资料)','#ddd6fe',list(found.filter(function(x){ return x.t===3; })),false);
+    h+=box('④ 期号开自己:以前哪几期开出自己期号的数字(例:453期开5434、435期开5347)','#bae6fd',list(own,true),false);
   }
   out.innerHTML=h;
 }
