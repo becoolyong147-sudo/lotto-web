@@ -745,7 +745,7 @@ function renderPatternTrend(){
     <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin:6px 0">
       <div class="ig"><label>查什么</label><select id="dl-mode" onchange="dlMode()"><option value="date">某月某日</option><option value="draw">某期号</option></select></div>
       <div class="ig" id="dl-date-box"><label>月 / 日</label><span><select id="dl-m"></select> 月 <select id="dl-d"></select> 日</span></div>
-      <div class="ig" id="dl-draw-box" style="display:none"><label>期号(只填前面的数字)</label><input id="dl-no" type="number" min="1" max="999" placeholder="例如 437" style="width:110px"><label style="display:flex;align-items:center;gap:4px;margin-top:4px;cursor:pointer"><input type="checkbox" id="dl-rel" checked style="width:auto">连相关的一起找(453 → 435、345…)</label></div>
+      <div class="ig" id="dl-draw-box" style="display:none"><label>期号(只填前面的数字)</label><input id="dl-no" type="number" min="1" max="999" placeholder="例如 437" style="width:110px"><label style="display:flex;align-items:center;gap:4px;margin-top:4px;cursor:pointer"><input type="checkbox" id="dl-rel" checked onchange="document.getElementById('dl-same').disabled=!this.checked" style="width:auto">连相关的一起找(453 → 435、345…)</label><label style="display:flex;align-items:center;gap:4px;margin-top:2px;cursor:pointer"><input type="checkbox" id="dl-same" checked style="width:auto">相同点数也找(453 → 12点)</label></div>
       <div class="ig"><label>连前后几期一起看</label><select id="dl-ar"><option value="0">只看那一期</option><option value="1" selected>前后各 1 期</option><option value="2">前后各 2 期</option><option value="3">前后各 3 期</option></select></div>
       <div class="ig"><label>市场</label><select id="dl-mk"><option value="*">全部 8 家</option><option>万能</option><option>跑马</option><option>多多</option><option>新加坡</option><option>豪龙</option><option>9龙</option><option>沙巴</option><option>砂拉越</option></select></div>
       <button class="btn btn-primary" onclick="dlRun()">🔍 查</button>
@@ -770,13 +770,20 @@ function dlRun(){
   // 相关:0=没有 1=三个数字都有但拆开 2=连着三位(前3或后3,任何排列)
   var relOf=function(n){ if(!REL||!/^\d{4}$/.test(n)) return 0; var k=key3(NS); if(key3(n.slice(0,3))===k||key3(n.slice(1))===k) return 2;
     return (key3(n[0]+n[1]+n[3])===k||key3(n[0]+n[2]+n[3])===k)?1:0; };
+  // 相同点数:期号三个数字相加 = 号码的前3 / 后3 / 整个4D,或别的期号
+  var pts=function(t){ return t.split('').reduce(function(a,b){ return a+(+b); },0); };
+  var SAME=REL&&document.getElementById('dl-same').checked, PT=SAME?pts(NS):-1, SP={f:[],b:[],d:[],no:[]};
+  var sameTag=function(n){ if(!SAME||!/^\d{4}$/.test(n)) return ''; var t=[]; if(pts(n.slice(0,3))===PT)t.push('前3'); if(pts(n.slice(1))===PT)t.push('后3'); if(pts(n)===PT)t.push('4D');
+    return t.length?'<div style="font:700 10px/1.4 system-ui;background:#bfdbfe;color:#1e3a8a;border-radius:3px">'+t.join('·')+'<br>'+PT+'点</div>':''; };
   var rows=[], found=[], own=[], HIS={}, fmt=function(mk,r){ return {mk:mk,date:String(r.date).slice(0,10),draw:r.draw||'',sp:(r.sp||[]).map(function(v){ return String(v).padStart(4,'0'); }).filter(function(v){ return /^\d{4}$/.test(v); }),nums:[0,1,2].map(function(k){ var v=r.nums&&r.nums[k]; return v==null||v===''?'----':String(v).padStart(4,'0'); })}; };
   MK.forEach(function(mk){ var L=(typeof payAllDraws==='function'?payAllDraws(mk):(DB[mk]||[])).filter(function(r){ return r&&r.date&&r.nums; }).slice().sort(function(a,b){ return String(a.date).localeCompare(String(b.date)); });
     L.forEach(function(r,i){ var dt=String(r.date||'').slice(0,10), rn=parseInt(String(r.draw||'').split('/')[0],10);
       if(REL){ var f=fmt(mk,r);
-        f.nums.forEach(function(n,p){ if(!/^\d{4}$/.test(n)) return; var b=mk+key3(n); (HIS[b]=HIS[b]||[]).push({date:f.date,n:n,p:p});
+        f.nums.forEach(function(n,p){ if(!/^\d{4}$/.test(n)) return; if(SAME){ var o1={mk:mk,L:L,i:i,date:f.date,draw:f.draw,p:p,n:n}; if(pts(n.slice(0,3))===PT)SP.f.push(o1); if(pts(n.slice(1))===PT)SP.b.push(o1); if(pts(n)===PT)SP.d.push(o1); }
+          var b=mk+key3(n); (HIS[b]=HIS[b]||[]).push({date:f.date,n:n,p:p});
           var t=relOf(n); if(t) found.push({mk:mk,L:L,i:i,date:f.date,draw:f.draw,p:p,n:n,t:t});
           if(rn>99&&rn<1000){ var k=key3(String(rn)); if(key3(n.slice(0,3))===k||key3(n.slice(1))===k) own.push({mk:mk,L:L,i:i,date:f.date,draw:f.draw,p:p,n:n}); } });
+        if(SAME&&rn>0&&rn<1000&&pts(String(rn))===PT){ f.no=rn; SP.no.push(f); }
         f.sp.forEach(function(n){ var t=relOf(n); if(t===2) found.push({mk:mk,L:L,i:i,date:f.date,draw:f.draw,p:3,n:n,t:3}); }); }
       var ok=mode==='date'?(dt.slice(5)===mm+'-'+dd):(rn===no||(REL&&rn>0&&rn<1000&&key3(('00'+rn).slice(-3))===key3(NS)));
       if(!ok) return; var o=fmt(mk,r); o.around=[]; o.no=rn;
@@ -786,12 +793,12 @@ function dlRun(){
   var title=mode==='date'?(+mm)+' 月 '+(+dd)+' 日':'第 '+no+' 期';
   if(!rows.length&&!found.length){ out.innerHTML='<div class="warn">'+(mkSel==='*'?'8 家':mkSel)+' 历年的'+title+'都没有开奖记录'+(mode==='date'?'(那天不是开奖日)':'')+'。</div>'; return; }
   var h='<div style="font-weight:800;color:#0e7490;margin-bottom:4px">'+(mkSel==='*'?'8 家':mkSel)+' · 历年'+title+(REL?'和相关期号':'')+' · 共 '+rows.length+' 期</div>';
-  if(REL) h+='<div style="font-size:13px;margin-bottom:4px"><span style="background:#86efac;padding:1px 6px">绿 = '+NS+' 连着(前3或后3,任何排列)</span> <span style="background:#fed7aa;padding:1px 6px">橙 = 三个数字都有,但拆开</span><div style="color:#64748b;font-size:12px">号码底下小字 = 它的分身在那一期之前,上次开什么、哪天、一共来过几次</div></div>';
+  if(REL) h+='<div style="font-size:13px;margin-bottom:4px"><span style="background:#86efac;padding:1px 6px">绿 = '+NS+' 连着(前3或后3,任何排列)</span> <span style="background:#fed7aa;padding:1px 6px">橙 = 三个数字都有,但拆开</span><div style="color:#64748b;font-size:12px"><span style="background:#bfdbfe;color:#1e3a8a;padding:0 4px">蓝 = 相同点数</span> 号码底下小字 = 它的分身在那一期之前,上次开什么、哪天、一共来过几次</div></div>';
   h+='<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:14px;width:100%"><tr style="background:#ecfeff;color:#0e7490"><th style="text-align:left;padding:4px 6px">日期</th><th>星期</th>'+(MK.length>1?'<th>市场</th>':'')+'<th>期号</th><th>头奖</th><th>二奖</th><th>三奖</th></tr>';
   var lastY='';
   function tr(r,top,main,tag){ var wd=WK[new Date(r.date+'T00:00:00').getDay()];
     return '<tr style="border-top:'+top+(main?';background:#fef9c3':'')+'"><td style="padding:4px 6px;white-space:nowrap">'+r.date+(tag?' <span style="font-size:11px;color:#64748b">'+tag+'</span>':'')+'</td><td style="text-align:center">'+wd+'</td>'+(MK.length>1?'<td style="text-align:center">'+r.mk+'</td>':'')+'<td style="text-align:center;color:#64748b">'+r.draw+'</td>'
-      +r.nums.map(function(n){ var t=relOf(n); return '<td style="text-align:center;'+(t?'background:'+(t===2?'#86efac':'#fed7aa')+';':'')+'font-family:monospace;font-size:16px;font-weight:'+(main?'800':'500')+(main?'':';color:#475569')+'">'+n+before(r,n)+'</td>'; }).join('')+'</tr>'
+      +r.nums.map(function(n){ var t=relOf(n); return '<td style="text-align:center;'+(t?'background:'+(t===2?'#86efac':'#fed7aa')+';':'')+'font-family:monospace;font-size:16px;font-weight:'+(main?'800':'500')+(main?'':';color:#475569')+'">'+n+sameTag(n)+before(r,n)+'</td>'; }).join('')+'</tr>'
       +(REL&&r.sp.length?'<tr'+(main?' style="background:#fef9c3"':'')+'><td colspan="7" style="padding:2px 6px 5px;font-size:12px;color:#64748b;line-height:1.8">特别奖 '+r.sp.map(function(n){ return mark(n,13); }).join(' ')+'</td></tr>':''); }
   function mark(n,size){ var t=relOf(n); return '<span style="display:inline-block;padding:0 4px;border-radius:3px;color:#0f172a;font-family:monospace;font-size:'+size+'px;'+(t?'background:'+(t===2?'#86efac':'#fed7aa'):'')+'">'+n+'</span>'; }
   // 这个号码的分身:在那一期之前开过几次、上一次哪天开什么
@@ -829,6 +836,19 @@ function dlRun(){
     h+=box('② '+NS+' 拆开的号码(头二三)','#fed7aa',list(found.filter(function(x){ return x.t===1; })),false);
     h+=box('③ 特别奖开过 '+NS+' 连着的(只有近几年资料)','#ddd6fe',list(found.filter(function(x){ return x.t===3; })),false);
     h+=box('④ 期号开自己:以前哪几期开出自己期号的数字(例:453期开5434、435期开5347)','#bae6fd',list(own,true),false);
+    if(SAME){
+      // 名单很长:画面只列最新 200 次,复制是全部
+      var cut=function(L){ L.sort(newest); return (L.length>200?'<div style="font-size:12px;color:#64748b">画面列最新 200 次;复制是全部 '+L.length+' 次里的号码</div>'+copy(L)+list(L.slice(0,200),true).replace(copy(L.slice(0,200)),''):list(L,true)); };
+      var sub='';
+      [['f','前3 = '+PT+'点'],['b','后3 = '+PT+'点'],['d','整个4D = '+PT+'点']].forEach(function(g){ var L=SP[g[0]], B=cut(L); sub+=box(g[1]+'　开过 '+L.length+' 次'+(L.length?' · 最近 '+L[0].n+'('+L[0].date+')':''),'#eff6ff',B,false); });
+      h+=box('⑤ 相同点数的号码:'+NS.split('').join('+')+' = '+PT+'点','#bfdbfe',sub,true);
+
+      var G={}; SP.no.forEach(function(f){ (G[f.no]=G[f.no]||[]).push(f); });
+      var nb=Object.keys(G).sort(function(a,b){ return Math.abs(a-no)-Math.abs(b-no)||a-b; }).map(function(k){
+        return box('第 '+k+' 期('+('00'+k).slice(-3).split('').join('+')+')· '+G[k].length+' 期','#eff6ff',G[k].sort(newest).map(function(f){
+          return '<div style="padding:4px;border-top:1px solid #e2e8f0;font-size:12px">'+f.date+(MK.length>1?' '+f.mk:'')+'<div style="display:flex;gap:6px">'+f.nums.map(function(n){ return '<div style="text-align:center;min-width:54px">'+mark(n,16)+sameTag(n)+'</div>'; }).join('')+'</div></div>'; }).join(''),false); }).join('');
+      h+=box('⑥ 相同点数的期号:也是 '+PT+'点的期号,各开了什么(越靠近 '+no+' 期排越上面)','#bfdbfe',nb,false);
+    }
   }
   out.innerHTML=h;
 }
