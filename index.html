@@ -22752,6 +22752,33 @@ function zoRootDigitComboBacktest(){
       if(allStar.length) h+='<div style="margin-top:5px"><button class="btn" style="padding:3px 10px;font-size:11px;background:#f59e0b;color:#fff" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+allStar.join(' ')+'\').then(()=>{this.textContent=\'✅已复制\';setTimeout(()=>this.textContent=\'📋复制全部⭐('+allStar.length+')\',1200)})">📋复制全部⭐('+allStar.length+')</button> <button class="btn" style="padding:3px 10px;font-size:11px;background:#7c3aed;color:#fff" onclick="zoSendStarsToFilter(\''+allStar.join(' ')+'\',\''+mk+'\','+starN[0]+','+starN[1]+','+starN[2]+')">📤 前+中+后 ⭐ 一次全部送进高级筛选('+allStar.length+')</button></div>';
       h+='</div>';
     })();
+    // 🎲 2D → 4D:用推荐的前2D、后2D 拼成 4D;数根分前后时再要求中2D 也对上(三段都对)
+    (function(){
+      var F=ABS2D.dbl(mode==='mix'?Rc.M:Rc.F,Dc.A[0],Dc.A[1]), M=mode==='mix'?[]:ABS2D.dbl(Rc.Mid,Dc.A[1],Dc.A[2]), B=ABS2D.dbl(mode==='mix'?Rc.M:Rc.B,Dc.A[2],Dc.A[3]);
+      function build(f,m,b){ var Ms={}, all=[], tri=[]; m.forEach(function(v){Ms[v]=1;}); f.forEach(function(x){ b.forEach(function(y){ var n=x+y; all.push(n); if(Ms[n.slice(1,3)]) tri.push(n); }); }); return {all:all.sort(),tri:tri.sort()}; }
+      var R=build(F,M,B);
+      function grid(L,id){ if(!L.length) return '<div style="color:#94a3b8;font-size:12px">(没有)</div>'; var out='';
+        for(var g=0;g<L.length;g+=70){ var part=L.slice(g,g+70), j=JSON.stringify(part).replace(/"/g,'&quot;');
+          var cp=function(lbl,how){ return '<button class="btn" style="padding:2px 8px;font-size:11px;margin:2px 4px 2px 0" onclick="var a='+j+';navigator.clipboard&&navigator.clipboard.writeText('+how+').then(()=>{this.textContent=\'✅ 已复制\'})">'+lbl+'</button>'; };
+          out+='<div style="margin-top:6px">'+(L.length>70?'<b>第 '+(g/70+1)+' 组</b>('+part.length+' 个) ':'')+cp('📋 一行一个',"a.join('\n')")+cp('📋 逗号',"a.join(',')")+cp('📋 加**',"a.map(x=>x+'**').join('\n')")+'</div>'
+            +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(50px,1fr));gap:3px">'+part.map(function(n){ return '<span style="font-family:monospace;font-size:14px;text-align:center;background:#f1f5f9;border-radius:4px;padding:2px 0">'+n+'</span>'; }).join('')+'</div>'; }
+        return out; }
+      h+='<div style="margin-top:8px;border:2px solid #0f766e;background:#f0fdfa;border-radius:8px;padding:8px 10px">';
+      h+='<div style="font-size:14px;font-weight:800;color:#0f766e">🎲 用推荐的 2D 拼成 4D(下一期参考)</div>';
+      h+='<div style="font-size:13px;margin:4px 0;line-height:1.7">前2D 推荐 <b>'+F.length+'</b> 个:<span style="font-family:monospace">'+(F.join(' ')||'没有')+'</span><br>'
+        +(mode==='mix'?'':'中2D 推荐 <b>'+M.length+'</b> 个:<span style="font-family:monospace">'+(M.join(' ')||'没有')+'</span><br>')
+        +'后2D 推荐 <b>'+B.length+'</b> 个:<span style="font-family:monospace">'+(B.join(' ')||'没有')+'</span></div>';
+      if(mode!=='mix') h+='<details open><summary style="cursor:pointer;font-weight:800;color:#0f766e">✅ 前、中、后三段都对上的 4D:'+R.tri.length+' 个(最少,最准的拼法)</summary><div style="font-size:12px;color:#64748b">例:前2D 是 12、后2D 是 34 → 1234,中间的 23 也要在中2D 推荐里</div>'+grid(R.tri)+'</details>';
+      h+='<details'+(mode==='mix'?' open':'')+'><summary style="cursor:pointer;font-weight:800;color:#0f766e;margin-top:6px">🔗 前2D × 后2D 全部拼起来:'+R.all.length+' 个</summary>'+grid(R.all)+'</details>';
+      // 倒回去看:最近 15 期,如果当时照这样拼,下一期头二三有没有在里面
+      var rec=det.slice(-15).reverse().map(function(x){ var r2=build(x.rec.f,x.rec.m||[],x.rec.b), sT={}, sA={}; r2.tri.forEach(function(n){sT[n]=1;}); r2.all.forEach(function(n){sA[n]=1;});
+        var key=mode==='mix'?sA:sT, sz=mode==='mix'?r2.all.length:r2.tri.length;
+        return '<div style="font-size:13px;padding:2px 0;border-top:1px solid #ccfbf1"><span style="display:inline-block;width:44px;color:#64748b">'+String(x.date).slice(5)+'</span>'
+          +x.top3.map(function(n){ return key[n]?'<b style="background:#16a34a;color:#fff;border-radius:3px;padding:0 4px;font-family:monospace">'+n+'</b>':(sA[n]?'<b style="background:#bbf7d0;border-radius:3px;padding:0 4px;font-family:monospace">'+n+'</b>':'<span style="font-family:monospace;padding:0 4px">'+n+'</span>'); }).join(' ')
+          +' <span style="color:#64748b;font-size:11px">当时拼出 '+sz+' 个</span> '+(x.top3.some(function(n){return key[n];})?'✅':'❌')+'</div>'; }).join('');
+      h+='<details><summary style="cursor:pointer;font-weight:800;color:#0f766e;margin-top:6px">📜 最近 15 期:当时照这样拼,开出来的有没有在里面</summary><div style="font-size:12px;color:#64748b;margin:3px 0">深绿 = '+(mode==='mix'?'前后拼起来':'三段都对上')+'的号码里有它;浅绿 = 只在「全部拼起来」里</div>'+rec+'</details>';
+      h+='</div>';
+    })();
     // 📋 缺根 → 2D组合（同调字组排一起，如 29·92）；两位都在缺席1D里的高亮（数根+1D双缺=打法目标）
     (function(){
       // s1=第一位(千/十)缺席集, s2=第二位(百/个)缺席集
