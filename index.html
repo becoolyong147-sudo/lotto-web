@@ -22757,6 +22757,18 @@ function zoRootDigitComboBacktest(){
       var F=ABS2D.dbl(mode==='mix'?Rc.M:Rc.F,Dc.A[0],Dc.A[1]), M=mode==='mix'?[]:ABS2D.dbl(Rc.Mid,Dc.A[1],Dc.A[2]), B=ABS2D.dbl(mode==='mix'?Rc.M:Rc.B,Dc.A[2],Dc.A[3]);
       function build(f,m,b){ var Ms={}, all=[], tri=[]; m.forEach(function(v){Ms[v]=1;}); f.forEach(function(x){ b.forEach(function(y){ var n=x+y; all.push(n); if(Ms[n.slice(1,3)]) tri.push(n); }); }); return {all:all.sort(),tri:tri.sort()}; }
       var R=build(F,M,B);
+      // ⭐ 应季:跟上面⭐那块同一个算法(历史偏爱现在这半年 1.2 倍以上),只用目前为止的头二三
+      var HC=[{},{},{}]; per.forEach(function(pp){ var hf=(+String(pp.date).slice(5,7))<=6?'h1':'h2'; pp.top3.forEach(function(s2){ [s2.slice(0,2),s2.slice(1,3),s2.slice(2,4)].forEach(function(v,w){ var o=HC[w][v]||(HC[w][v]={h1:0,h2:0}); o[hf]++; }); }); });
+      var TH=((new Date().getMonth()+1)<=6)?'h1':'h2', star=function(w,v){ var o=HC[w][v]; return !!o&&(TH==='h1'?o.h1>o.h2*1.2:o.h2>o.h1*1.2); };
+      var DRG=(mk==='豪龙'||mk==='9龙');
+      // 我推荐的 20 个:从「三段都对上」(混合数根用前后全拼)里挑;最近 30 期开过的不要
+      function pick(pool,isStar,recent){ return pool.filter(function(n){ return !recent[n]; }).map(function(n){
+          var why=[], sc=0, segs=[[0,n.slice(0,2),'前2D'],[1,n.slice(1,3),'中2D'],[2,n.slice(2,4),'后2D']];
+          segs.forEach(function(g){ if(isStar(g[0],g[1])){ sc+=3; why.push(g[2]+' '+g[1]+' ⭐'); } });
+          if(DRG){ if(new Set(n).size===4){ sc+=2; why.push('24打'); } if(n.indexOf('4')>=0){ sc+=1; why.push('有4'); } if(n.indexOf('7')>=0){ sc+=1; why.push('有7'); } }
+          return {n:n,sc:sc,why:why}; }).sort(function(a,b){ return b.sc-a.sc||a.n.localeCompare(b.n); }).slice(0,20); }
+      var RECENT={}; per.slice(-30).forEach(function(pp){ pp.top3.forEach(function(n){ RECENT[n]=1; }); });
+      var MINE=pick(mode==='mix'?R.all:R.tri, star, RECENT);
       function grid(L,id){ if(!L.length) return '<div style="color:#94a3b8;font-size:12px">(没有)</div>'; var out='';
         for(var g=0;g<L.length;g+=70){ var part=L.slice(g,g+70), j=JSON.stringify(part).replace(/"/g,'&quot;');
           var cp=function(lbl,how){ return '<button class="btn" style="padding:2px 8px;font-size:11px;margin:2px 4px 2px 0" onclick="var a='+j+';navigator.clipboard&&navigator.clipboard.writeText('+how+').then(()=>{this.textContent=\'✅ 已复制\'})">'+lbl+'</button>'; };
@@ -22768,15 +22780,26 @@ function zoRootDigitComboBacktest(){
       h+='<div style="font-size:13px;margin:4px 0;line-height:1.7">前2D 推荐 <b>'+F.length+'</b> 个:<span style="font-family:monospace">'+(F.join(' ')||'没有')+'</span><br>'
         +(mode==='mix'?'':'中2D 推荐 <b>'+M.length+'</b> 个:<span style="font-family:monospace">'+(M.join(' ')||'没有')+'</span><br>')
         +'后2D 推荐 <b>'+B.length+'</b> 个:<span style="font-family:monospace">'+(B.join(' ')||'没有')+'</span></div>';
-      if(mode!=='mix') h+='<details open><summary style="cursor:pointer;font-weight:800;color:#0f766e">✅ 前、中、后三段都对上的 4D:'+R.tri.length+' 个(最少,最准的拼法)</summary><div style="font-size:12px;color:#64748b">例:前2D 是 12、后2D 是 34 → 1234,中间的 23 也要在中2D 推荐里</div>'+grid(R.tri)+'</details>';
+      h+='<div style="margin:6px 0;padding:8px;background:#fff;border:2px solid #f59e0b;border-radius:8px"><div style="font-weight:800;color:#b45309;font-size:14px">⭐ 我推荐的 '+MINE.length+' 个</div>'
+        +'<div style="font-size:12px;color:#64748b">从'+(mode==='mix'?'前后拼起来':'三段都对上')+'的号码里挑:几段是 ⭐应季的排前面;最近 30 期开过的不要'+(DRG?';'+mk+' 偏爱 24打、有4、有7,也加分':'')+'</div>'
+        +grid(MINE.map(function(x){ return x.n; }))
+        +'<div style="font-size:13px;margin-top:6px;line-height:1.7">'+MINE.map(function(x){ return '<b style="font-family:monospace">'+x.n+'</b> <span style="color:#64748b">'+(x.why.join('、')||'没有特别条件,按号码顺序补上')+'</span>'; }).join('<br>')+'</div></div>';
+      if(mode!=='mix') h+='<details><summary style="cursor:pointer;font-weight:800;color:#0f766e">✅ 前、中、后三段都对上的 4D:'+R.tri.length+' 个(最少,最准的拼法)</summary><div style="font-size:12px;color:#64748b">例:前2D 是 12、后2D 是 34 → 1234,中间的 23 也要在中2D 推荐里</div>'+grid(R.tri)+'</details>';
       h+='<details'+(mode==='mix'?' open':'')+'><summary style="cursor:pointer;font-weight:800;color:#0f766e;margin-top:6px">🔗 前2D × 后2D 全部拼起来:'+R.all.length+' 个</summary>'+grid(R.all)+'</details>';
       // 倒回去看:最近 15 期,如果当时照这样拼,下一期头二三有没有在里面
+      var pIdx={}; per.forEach(function(pp,k){ pIdx[pp.date]=k; });
+      var mineHit=0, mineN=0;
       var rec=det.slice(-15).reverse().map(function(x){ var r2=build(x.rec.f,x.rec.m||[],x.rec.b), sT={}, sA={}; r2.tri.forEach(function(n){sT[n]=1;}); r2.all.forEach(function(n){sA[n]=1;});
+        var k=pIdx[x.date], rc={}; per.slice(Math.max(0,k-30),k).forEach(function(pp){ pp.top3.forEach(function(n){ rc[n]=1; }); });
+        var fs={f:{},m:{},b:{}}; ['f','m','b'].forEach(function(q){ ((x.fit||{})[q]||[]).forEach(function(v){ fs[q][v]=1; }); });
+        var my={}; pick(mode==='mix'?r2.all:r2.tri, function(w,v){ return !!fs['fmb'[w]][v]; }, rc).forEach(function(o){ my[o.n]=1; });
+        var gotMine=x.top3.filter(function(n){ return my[n]; }); mineN++; if(gotMine.length) mineHit++;
         var key=mode==='mix'?sA:sT, sz=mode==='mix'?r2.all.length:r2.tri.length;
         return '<div style="font-size:13px;padding:2px 0;border-top:1px solid #ccfbf1"><span style="display:inline-block;width:44px;color:#64748b">'+String(x.date).slice(5)+'</span>'
           +x.top3.map(function(n){ return key[n]?'<b style="background:#16a34a;color:#fff;border-radius:3px;padding:0 4px;font-family:monospace">'+n+'</b>':(sA[n]?'<b style="background:#bbf7d0;border-radius:3px;padding:0 4px;font-family:monospace">'+n+'</b>':'<span style="font-family:monospace;padding:0 4px">'+n+'</span>'); }).join(' ')
-          +' <span style="color:#64748b;font-size:11px">当时拼出 '+sz+' 个</span> '+(x.top3.some(function(n){return key[n];})?'✅':'❌')+'</div>'; }).join('');
-      h+='<details><summary style="cursor:pointer;font-weight:800;color:#0f766e;margin-top:6px">📜 最近 15 期:当时照这样拼,开出来的有没有在里面</summary><div style="font-size:12px;color:#64748b;margin:3px 0">深绿 = '+(mode==='mix'?'前后拼起来':'三段都对上')+'的号码里有它;浅绿 = 只在「全部拼起来」里</div>'+rec+'</details>';
+          +' <span style="color:#64748b;font-size:11px">当时拼出 '+sz+' 个</span> '+(x.top3.some(function(n){return key[n];})?'✅':'❌')
+          +' · <span style="font-size:12px">推荐20个:'+(gotMine.length?'<b style="background:#f59e0b;color:#fff;border-radius:3px;padding:0 4px">⭐ 中 '+gotMine.join(' ')+'</b>':'<span style="color:#94a3b8">没中</span>')+'</span></div>'; }).join('');
+      h+='<details><summary style="cursor:pointer;font-weight:800;color:#0f766e;margin-top:6px">📜 最近 15 期:当时照这样拼,开出来的有没有在里面</summary><div style="font-size:12px;color:#64748b;margin:3px 0">深绿 = '+(mode==='mix'?'前后拼起来':'三段都对上')+'的号码里有它;浅绿 = 只在「全部拼起来」里;橙色 = 当时的「推荐 20 个」中了</div>'+rec+'<div style="font-size:13px;margin-top:4px;font-weight:700">推荐 20 个:15 期里中了 '+mineHit+' 期</div></details>';
       h+='</div>';
     })();
     // 📋 缺根 → 2D组合（同调字组排一起，如 29·92）；两位都在缺席1D里的高亮（数根+1D双缺=打法目标）
