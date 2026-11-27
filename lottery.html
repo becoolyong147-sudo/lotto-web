@@ -22759,9 +22759,15 @@ function zoRootDigitComboBacktest(){
       var RG=window.__z4Rg||'off', sum4=function(n){ return (+n[0])+(+n[1])+(+n[2])+(+n[3]); };
       function okSet(top3){ if(RG==='off') return null; var v=top3.map(sum4), ok={};
         if(RG==='mm'){ for(var t=Math.min.apply(null,v);t<=Math.max.apply(null,v);t++) ok[t]=1; } else v.forEach(function(x){ for(var t=x-(+RG);t<=x+(+RG);t++) ok[t]=1; }); return ok; }
-      function build(f,m,b,ok){ var Ms={}, all=[], tri=[]; m.forEach(function(v){Ms[v]=1;}); f.forEach(function(x){ b.forEach(function(y){ var n=x+y; if(ok&&!ok[sum4(n)]) return; all.push(n); if(Ms[n.slice(1,3)]) tri.push(n); }); }); return {all:all.sort(),tri:tri.sort()}; }
+      // 🔁 分身(调字)在过去 X 年开过:只用「那一期之前」的头二三。BY = 'off' / '1' '2' '3'
+      var BY=window.__z4By||'off', bk=function(n){ return n.split('').sort().join(''); }, BOXD={};
+      per.forEach(function(pp){ pp.top3.forEach(function(n){ (BOXD[bk(n)]=BOXD[bk(n)]||[]).push(pp.date); }); });
+      function boxOk(n,date){ if(BY==='off') return true; var L=BOXD[bk(n)]; if(!L) return false; var d=new Date(date); d.setFullYear(d.getFullYear()-(+BY)); var from=d.toISOString().slice(0,10);
+        return L.some(function(x){ return x>=from&&x<date; }); }
+      var DAY0=null;
+      function build(f,m,b,ok){ var Ms={}, all=[], tri=[]; m.forEach(function(v){Ms[v]=1;}); f.forEach(function(x){ b.forEach(function(y){ var n=x+y; if(ok&&!ok[sum4(n)]) return; if(!boxOk(n,DAY0)) return; all.push(n); if(Ms[n.slice(1,3)]) tri.push(n); }); }); return {all:all.sort(),tri:tri.sort()}; }
       var pIdx={}; per.forEach(function(pp,k){ pIdx[pp.date]=k; });
-      var LAST=per[per.length-1], OK=okSet(LAST.top3), R=build(F,M,B,OK);
+      var LAST=per[per.length-1], OK=okSet(LAST.top3); var _d1=new Date(String(LAST.date).slice(0,10)); _d1.setDate(_d1.getDate()+1); DAY0=_d1.toISOString().slice(0,10); var R=build(F,M,B,OK);
       // ⭐ 应季:跟上面⭐那块同一个算法(历史偏爱现在这半年 1.2 倍以上),只用目前为止的头二三
       var HC=[{},{},{}]; per.forEach(function(pp){ var hf=(+String(pp.date).slice(5,7))<=6?'h1':'h2'; pp.top3.forEach(function(s2){ [s2.slice(0,2),s2.slice(1,3),s2.slice(2,4)].forEach(function(v,w){ var o=HC[w][v]||(HC[w][v]={h1:0,h2:0}); o[hf]++; }); }); });
       var TH=((new Date().getMonth()+1)<=6)?'h1':'h2', star=function(w,v){ var o=HC[w][v]; return !!o&&(TH==='h1'?o.h1>o.h2*1.2:o.h2>o.h1*1.2); };
@@ -22785,7 +22791,9 @@ function zoRootDigitComboBacktest(){
       var lv=LAST.top3.map(sum4), okL=OK?Object.keys(OK).map(Number).sort(function(a,b){return a-b;}):[];
       h+='<div style="margin:6px 0;padding:6px 8px;background:#fff;border:1px dashed #0f766e;border-radius:6px;font-size:13px">📏 <b>点数范围</b>:上一期 '+String(LAST.date).slice(5)+' 开 '+LAST.top3.map(function(n,k){ return '<b style="font-family:monospace">'+n+'</b>('+lv[k]+'点)'; }).join(' ')
         +'<br><select onchange="window.__z4Rg=this.value;zoRootDigitComboBacktest()" style="margin-top:4px;font-size:13px">'+[['off','不限点数'],['1','跟上一期点数 ±1'],['2','跟上一期点数 ±2'],['3','跟上一期点数 ±3'],['mm','上一期最低到最高']].map(function(o){ return '<option value="'+o[0]+'"'+(o[0]===RG?' selected':'')+'>'+o[1]+'</option>'; }).join('')+'</select>'
-        +(OK?' 只留 <b>'+okL.join('、')+'</b> 点':'')+'</div>';
+        +(OK?' 只留 <b>'+okL.join('、')+'</b> 点':'')
+        +'<br>🔁 <b>分身来过</b>:<select onchange="window.__z4By=this.value;zoRootDigitComboBacktest()" style="margin-top:4px;font-size:13px">'+[['off','不限'],['1','过去 1 年内来过'],['2','过去 2 年内来过'],['3','过去 3 年内来过']].map(function(o){ return '<option value="'+o[0]+'"'+(o[0]===BY?' selected':'')+'>'+o[1]+'</option>'; }).join('')+'</select>'
+        +(BY!=='off'?' 只留分身(任何排列)在过去 '+BY+' 年头二三开过的':'')+'</div>';
       h+='<div style="font-size:13px;margin:4px 0;line-height:1.7">前2D 推荐 <b>'+F.length+'</b> 个:<span style="font-family:monospace">'+(F.join(' ')||'没有')+'</span><br>'
         +(mode==='mix'?'':'中2D 推荐 <b>'+M.length+'</b> 个:<span style="font-family:monospace">'+(M.join(' ')||'没有')+'</span><br>')
         +'后2D 推荐 <b>'+B.length+'</b> 个:<span style="font-family:monospace">'+(B.join(' ')||'没有')+'</span></div>';
@@ -22797,7 +22805,7 @@ function zoRootDigitComboBacktest(){
       h+='<details'+(mode==='mix'?' open':'')+'><summary style="cursor:pointer;font-weight:800;color:#0f766e;margin-top:6px">🔗 前2D × 后2D 全部拼起来:'+R.all.length+' 个</summary>'+grid(R.all)+'</details>';
       // 倒回去看:最近 15 期,如果当时照这样拼,下一期头二三有没有在里面
       var mineHit=0, mineN=0;
-      var rec=det.slice(-15).reverse().map(function(x){ var kx=pIdx[x.date], r2=build(x.rec.f,x.rec.m||[],x.rec.b,kx>0?okSet(per[kx-1].top3):null), sT={}, sA={}; r2.tri.forEach(function(n){sT[n]=1;}); r2.all.forEach(function(n){sA[n]=1;});
+      var rec=det.slice(-15).reverse().map(function(x){ var kx=pIdx[x.date]; DAY0=x.date; var r2=build(x.rec.f,x.rec.m||[],x.rec.b,kx>0?okSet(per[kx-1].top3):null), sT={}, sA={}; r2.tri.forEach(function(n){sT[n]=1;}); r2.all.forEach(function(n){sA[n]=1;});
         var k=pIdx[x.date], rc={}; per.slice(Math.max(0,k-30),k).forEach(function(pp){ pp.top3.forEach(function(n){ rc[n]=1; }); });
         var fs={f:{},m:{},b:{}}; ['f','m','b'].forEach(function(q){ ((x.fit||{})[q]||[]).forEach(function(v){ fs[q][v]=1; }); });
         var my={}; pick(mode==='mix'?r2.all:r2.tri, function(w,v){ return !!fs['fmb'[w]][v]; }, rc).forEach(function(o){ my[o.n]=1; });
