@@ -251,7 +251,7 @@ tr:hover td{background:#fafaf5}
 <div id="tszc-err" style="color:#f87171;font-size:13px;margin-top:10px;min-height:18px"></div>
 </form></div>
 <script>
-// 🔒 登入锁:比对密码的 SHA-256(不把密码本身写在网页里);对了就记在这台设备,下次不用再输入
+// 🔒 登入锁:比对密码的 SHA-256(不把密码本身写在网页里);每次打开 App 都要输入一次
 (function(){
   var H='a9cbe2758905f886681f3ba798a6f449ec75fd0e2c929bc93e68530fd6706a0c', K='tszc_lock_v1';
   function sha256(str){ // 小型 SHA-256(本机文件打开时浏览器没有 crypto.subtle,用这个)
@@ -265,13 +265,13 @@ tr:hover td{background:#fafaf5}
         a=[(t1+t2)|0].concat(a.slice(0,7)); a[4]=(a[4]+t1)|0; }
       for(i=0;i<8;i++) h[i]=(h[i]+a[i])|0; }
     return h.map(function(x){ return ('00000000'+(x>>>0).toString(16)).slice(-8); }).join(''); }
-  var ok=false; try{ ok=localStorage.getItem(K)===H; }catch(e){}
+  var ok=false; try{ localStorage.removeItem(K); ok=sessionStorage.getItem(K)===H; }catch(e){}   // 每次打开都要输入;只在这次打开里记住(刷新不用再输)
   if(ok){ var el=document.getElementById('tszc-lock'); if(el) el.remove(); }
   window.tszcUnlock=function(ev){ ev.preventDefault(); var v=document.getElementById('tszc-pw').value;
-    if(sha256('tszc:'+v)===H){ try{ localStorage.setItem(K,H); }catch(e){} document.getElementById('tszc-lock').remove(); }
+    if(sha256('tszc:'+v)===H){ try{ sessionStorage.setItem(K,H); }catch(e){} document.getElementById('tszc-lock').remove(); }
     else { document.getElementById('tszc-err').textContent='密码不对,请再试一次'; document.getElementById('tszc-pw').select(); }
     return false; };
-  window.tszcLock=function(){ try{ localStorage.removeItem(K); }catch(e){} location.reload(); };
+  window.tszcLock=function(){ try{ sessionStorage.removeItem(K); }catch(e){} location.reload(); };
 })();
 </script>
 
