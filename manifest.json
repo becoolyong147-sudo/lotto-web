@@ -1,12 +1,18 @@
 {
-  "name": "一步之遥 · 成功就差你踏出第一步",
-  "short_name": "一步之遥",
+  "name": "TSZC 4D · 天數咫尺",
+  "short_name": "TSZC 4D",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#111827",
-  "theme_color": "#111827",
+  "background_color": "#111214",
+  "theme_color": "#111214",
   "icons": [
+    {
+      "src": "icons/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
     {
       "src": "icons/icon-192.png",
       "sizes": "192x192",
@@ -17,7 +23,8 @@
       "src": "icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     }
-  ]
+  ],
+  "description": "天數咫尺 TianShu ZhiChi · ONE STEP · 数中有道，咫尺之间。"
 }

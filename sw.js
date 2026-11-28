@@ -1,5 +1,5 @@
 // 手机「加到主画面」用的 App 外壳:每次都先上网拿最新的(成绩要最新),没网才用上次存下来的
-const CACHE = 'lotto-app-v2';
+const CACHE = 'lotto-app-v3';
 self.addEventListener('install', e => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
 self.addEventListener('fetch', e => {
